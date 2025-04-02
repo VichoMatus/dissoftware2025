@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from views.login_view import LoginView
+from views.authentication.login_view import LoginView
 
 class Application(ctk.CTk):
     def __init__(self):
