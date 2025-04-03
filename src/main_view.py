@@ -6,7 +6,7 @@ class Application(ctk.CTk):
         super().__init__()
 
         self.title("Cine Management System")
-        self.geometry("600x400")
+        self.geometry("1000x720")
 
         # Mostramos la vista de inicio de sesión por defecto
         self.login_view = LoginView(self)
