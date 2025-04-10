@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from views.authentication.login_view import LoginView
 from reservations.reservation_view import ReservationView
 
 class MainView(ctk.CTk):
@@ -51,5 +52,20 @@ class MainView(ctk.CTk):
 
 # Este bloque inicializa la aplicación
 if __name__ == "__main__":
-    app = MainView()  # Crear una instancia de la ventana principal
-    app.mainloop()  # Iniciar el ciclo de eventos de la interfaz gráfica
+    #app = MainView()  # Crear una instancia de la ventana principal
+    #app.mainloop()  # Iniciar el ciclo de eventos de la interfaz gráfica
+
+
+class Application(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("Cine Management System")
+        self.geometry("1000x720")
+
+        # Mostramos la vista de inicio de sesión por defecto
+        self.login_view = LoginView(self)
+
+if __name__ == "__main__":
+    #app = Application()
+    #app.mainloop()

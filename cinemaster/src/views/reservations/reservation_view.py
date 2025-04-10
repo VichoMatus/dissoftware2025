@@ -1,4 +1,5 @@
 import customtkinter as ctk
+
 import tkinter.messagebox as tkmb
 from reservations.seat_selection import SeatSelection  # Importamos la vista de selección de asiento
 
@@ -68,3 +69,4 @@ class ReservationView(ctk.CTkFrame):
         self.seat_selection_view = SeatSelection(self.master)
         self.seat_selection_view.grid(row=0, column=0, sticky="nsew")
         self.grid_forget()  # Ocultar la vista de reserva
+=
