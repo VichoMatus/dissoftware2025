@@ -1,76 +1,151 @@
-
+import customtkinter as ctk
+from tkinter import messagebox
 import sys
 import os
-import customtkinter as ctk
-import tkinter.messagebox as tkmb
+from sqlalchemy.orm import sessionmaker
+from models.database import get_db, HorarioAsientos
+from PIL import Image, ImageTk
 
-# Añadir el directorio 'src' al sys.path para permitir el acceso a 'views'
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
+# Importa la clase PagoView desde el archivo pago_view.py
+from views.pago_view import PagoView
 
-class SeatSelection(ctk.CTkFrame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.grid(row=0, column=0, sticky="nsew")
+class SeatSelectionView(ctk.CTk):
+    def __init__(self, selected_showtime_id, selected_showtime_string):
+        super().__init__()
+
+        self.title("Selección de Asientos")
+        self.geometry("1280x720")
+
+        # Configurar el modo oscuro
+        ctk.set_appearance_mode("dark")
+
+        # Asignar los parámetros a los atributos de la clase
+        self.selected_showtime = selected_showtime_id  # Asigna el ID del horario
+        self.selected_showtime_string = selected_showtime_string  # Asigna la cadena con el horario
+
+        # Obtener la base de datos y la sesión
+        self.db_session = next(get_db())
+
+        # Obtener los asientos disponibles para el horario seleccionado
+        self.selected_showtime_id = selected_showtime_id
+        self.selected_showtime_string = selected_showtime_string
+
+        # Obtener los asientos disponibles desde la base de datos
+        self.seat_options = self.get_available_seats(selected_showtime_id)
+
+        # Crear los frames
+        self.header_frame = ctk.CTkFrame(self)
+        self.header_frame.pack(fill='x', padx=20, pady=10)
+
+        # Frame para contener la imagen a la izquierda y la selección de asientos a la derecha
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # Crear los frames para la imagen y la selección de asientos
+        self.image_frame = ctk.CTkFrame(self.main_frame)
+        self.image_frame.pack(side="left", padx=10, pady=15)
+
+        self.selection_frame = ctk.CTkFrame(self.main_frame)
+        self.selection_frame.pack(side="right", padx=10, fill="both", expand=True)
+
+        # Header con el logo
+        self.create_header()
+
+        self.encabezado_label = ctk.CTkLabel(self.selection_frame, text="Selección de Asientos", font=("Arial", 20))
+        self.encabezado_label.pack(pady=20)
         
-        self.create_widgets()
+        # Mostrar el horario de la película seleccionada
+        self.showtime_label = ctk.CTkLabel(self.selection_frame, text=f"Horario: {selected_showtime_string}", font=("Arial", 14))
+        self.showtime_label.pack(pady=10)
 
-        # Inicializamos on_seat_selection_complete
-        self.on_seat_selection_complete = None
+        # Mostrar el dropdown para seleccionar el asiento
+        self.show_seat_dropdown()
 
-    def create_widgets(self):
-        # Título
-        self.title_label = ctk.CTkLabel(self, text="¡Selecciona tu Asiento!", font=("Arial", 24, "bold"))
-        self.title_label.grid(row=0, column=0, pady=20)
+        # Cargar y mostrar la imagen
+        image_path = os.path.abspath("cinemaster/src/views/images/Asientos.png")
+        self.load_seat_image(image_path)
 
-        # Etiqueta de selección de asiento
-        self.label = ctk.CTkLabel(self, text="Seleccione un asiento:", font=("Arial", 14))
-        self.label.grid(row=1, column=0, pady=10)
+        # Botón para confirmar la selección
+        self.confirm_button = ctk.CTkButton(self.selection_frame, text="Confirmar Selección", width=200, height=40, command=self.confirm_selection)
+        self.confirm_button.pack(pady=30)
 
-        # Lista de asientos disponibles (simulamos 10 asientos)
-        self.seats = [f"Asiento {i}" for i in range(1, 11)]
-        self.seat_var = ctk.StringVar(value=self.seats[0])  # Valor predeterminado
+    def create_header(self):
+        # Frame para el header
+        current_dir = os.path.dirname(__file__)
+        logo_path = os.path.join(current_dir, "..", "images", "logo.png")
 
-        # Dropdown para seleccionar el asiento
-        self.seat_dropdown = ctk.CTkOptionMenu(self, variable=self.seat_var, values=self.seats)
-        self.seat_dropdown.grid(row=2, column=0, pady=20)
+        self.logo_image = Image.open(logo_path)
+        self.logo_image = self.logo_image.resize((100, 100))
+        self.logo_photo = ImageTk.PhotoImage(self.logo_image)
 
-        # Botón para confirmar la selección de asiento
-        self.select_button = ctk.CTkButton(self, text="Reservar Asiento", command=self.confirm_seat, 
-                                           font=("Arial", 16), fg_color="#4CAF50", hover_color="#45a049", width=200)
-        self.select_button.grid(row=3, column=0, pady=20)
+        self.logo_label = ctk.CTkLabel(self.header_frame, image=self.logo_photo, text="")
+        self.logo_label.pack(side="left", padx=10)
 
-        # Ajustar el diseño para que ocupe todo el espacio disponible
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
+        self.app_name_label.pack(side="left", padx=10)
 
-    def confirm_seat(self):
-        selected_seat = self.seat_var.get()
+    def load_seat_image(self, image_path):
+        # Asegurarnos de que la ruta de la imagen sea válida
+        try:
+            # Cargar y redimensionar la imagen
+            seat_image = Image.open(image_path)
+            seat_image = seat_image.resize((500, 400))  # Redimensionar la imagen a 500x400
+            seat_image_tk = ImageTk.PhotoImage(seat_image)
 
-        if selected_seat:  # Si el usuario seleccionó un asiento
-            # Mostrar mensaje de éxito
-            tkmb.showinfo("Éxito", f"El asiento {selected_seat} ha sido reservado con éxito.")
+            # Crear un widget CTkLabel con la imagen
+            self.seat_image_label = ctk.CTkLabel(self.image_frame, image=seat_image_tk, text="")
+            self.seat_image_label.pack(side="left", padx=100)
+
+            # Mantener una referencia de la imagen para evitar que se pierda
+            self.seat_image_label.image = seat_image_tk
+
+        except Exception as e:
+            print(f"Error al cargar la imagen: {e}")
+
+    def get_available_seats(self, showtime_id):
+        available_seats = []
+
+        # Consultar los asientos disponibles para el horario seleccionado
+        horario_asientos = self.db_session.query(HorarioAsientos).filter(HorarioAsientos.horario_id == showtime_id).all()
+
+        # Iterar sobre los asientos relacionados con el horario
+        for ha in horario_asientos:
+            # Acceder al asiento directamente a través de la relación de SQLAlchemy
+            asiento = ha.asiento  # Esto se asume si tienes la relación correctamente definida
+            if asiento:  # Verificamos si el asiento existe
+                available_seats.append(asiento.ids_seats)
+
+        return available_seats
+
+    def show_seat_dropdown(self):
+        """Crea el OptionMenu para seleccionar el asiento con las opciones disponibles."""
+        if self.seat_options:
+            self.selected_seat = ctk.StringVar(value=self.seat_options[0])  # Valor por defecto
+
+            self.seat_dropdown = ctk.CTkOptionMenu(self.selection_frame, variable=self.selected_seat, values=self.seat_options)
+            self.seat_dropdown.pack(pady=20)  # Mostrar el OptionMenu con los asientos disponibles
+
+    def confirm_selection(self):
+        selected_seat = self.selected_seat.get()
+        if selected_seat:
+            messagebox.showinfo("Selección Confirmada", f"Has seleccionado el asiento: {selected_seat}")
             
-            # Llamar a la función de MainView para habilitar el botón de reservas
-            if self.on_seat_selection_complete:
-                self.on_seat_selection_complete()  # Llamar a la función de habilitación del botón en MainView
-
-            # Volver a la vista principal después de la reserva
-            self.show_main_view()  # Volver a mostrar la MainView
-            self.grid_forget()  # Ocultar la vista de selección de asiento
-
+            # Obtener el nombre de la película y la ruta de la imagen (esto lo deberías obtener de tu base de datos o lógica)
+            movie_name = "La Era del Hielo 5"  # Este valor debería ser dinámico basado en la selección
+            movie_image_path = "cinemaster/src/views/images/La_Era_del_Hielo_5.jpg"  # Ruta a la imagen de la película
+            
+            # Pasamos los datos seleccionados a la vista de pago
+            self.open_payment_view(selected_seat, self.selected_showtime, self.selected_showtime_string, movie_name, movie_image_path)
         else:
-            # Si no se selecciona un asiento
-            tkmb.showwarning("Advertencia", "Por favor selecciona un asiento.")
+            messagebox.showwarning("Advertencia", "No se ha seleccionado un asiento.")
 
-    def show_main_view(self):
-        # Importación de MainView aquí para evitar importación circular
-        from views.main_view import MainView  # La importación ahora se realiza correctamente
+    def open_payment_view(self, selected_seat, selected_showtime, selected_showtime_string, movie_name, movie_image_path):
+        # Abrir la vista de pago y pasarle los datos seleccionados
+        payment_view = PagoView(selected_seat, selected_showtime, selected_showtime_string, movie_name, movie_image_path)  
+        payment_view.mainloop()  # Ejecutar el mainloop de la interfaz de pago
 
-        # Verificar si el widget sigue existiendo antes de ejecutar cualquier operación
-        if self.winfo_exists():  # Verificar si el widget sigue existiendo
-            self.master.destroy()  # Destruir la vista actual (SeatSelection)
-            new_main_view = MainView()  # Crear la nueva instancia de MainView
-            new_main_view.mainloop()  # Iniciar el ciclo de eventos de la MainView
-        else:
-            print("La ventana ya ha sido destruida o no existe.")
+
+# Esta función se encargará de abrir la ventana de selección de asientos
+def open_seat_selection_view(selected_showtime_id, selected_showtime_string):
+    seat_selection_app = SeatSelectionView(selected_showtime_id, selected_showtime_string)
+    seat_selection_app.mainloop()
