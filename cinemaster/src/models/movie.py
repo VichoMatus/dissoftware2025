@@ -8,62 +8,60 @@ def create_40_seats_for_showtime(db_session, horario_id):
     Crea 40 asientos (5 filas x 8 columnas) para el horario dado.
     Los asientos serán etiquetados de la siguiente forma: A1, A2, ..., E8.
     """
-    # Definir los 40 asientos (5 filas de 8 asientos cada una)
     seat_ids = [f'{chr(65 + i)}{j+1}' for i in range(5) for j in range(8)]  # A1, A2, ..., E8
 
     for seat_id in seat_ids:
-        # Verificar si el asiento ya existe en la base de datos
         existing_seat = db_session.query(Asiento).filter(Asiento.ids_seats == seat_id).first()
 
         if not existing_seat:
-            # Crear el asiento si no existe
-            new_seat = Asiento(ids_seats=seat_id, Available=True)
+            # Crear asiento sin Available (ya no está en Asiento)
+            new_seat = Asiento(ids_seats=seat_id)
             db_session.add(new_seat)
-            db_session.commit()  # Guardar en la base de datos
+            db_session.commit()
 
-        # Relacionar el asiento con el horario
-        horario_asiento = HorarioAsientos(horario_id=horario_id, asiento_id=seat_id)
-        db_session.add(horario_asiento)
-        db_session.commit()  # Relacionar el asiento con el horario
+        # Crear la relación con horario_asientos y poner Available=True
+        existing_relation = db_session.query(HorarioAsientos).filter(
+            HorarioAsientos.horario_id == horario_id,
+            HorarioAsientos.asiento_id == seat_id
+        ).first()
+
+        if not existing_relation:
+            horario_asiento = HorarioAsientos(
+                horario_id=horario_id,
+                asiento_id=seat_id,
+                Available=True  # Asiento disponible para ese horario
+            )
+            db_session.add(horario_asiento)
+            db_session.commit()
 
     print(f"Se han creado 40 asientos para el horario con ID {horario_id}.")
 
-def create_movie_with_seats(db_session, title, gender, duration, horarios=[]):
+def create_movie_with_seats(db_session, title, gender, duration, image_path, horarios=[]):
     """
     Crea una película y asigna los horarios y 40 asientos para cada horario.
     """
-    # Crear la película
-    new_movie = Pelicula(Title=title, Gender=gender, Duration=duration)
+    new_movie = Pelicula(Title=title, Gender=gender, Duration=duration, Image_path=image_path)
     db_session.add(new_movie)
     db_session.commit()
     db_session.refresh(new_movie)
 
-    # Crear los horarios y asociar asientos con ellos
     if horarios:
-        for horario in horarios:
-            new_horario = Horario(fecha=horario, pelicula_id=new_movie.id_pelicula)
+        for horario_fecha in horarios:
+            new_horario = Horario(fecha=horario_fecha, pelicula_id=new_movie.id_pelicula)
             db_session.add(new_horario)
             db_session.commit()
             db_session.refresh(new_horario)
 
-            # Crear los 40 asientos para este horario
             create_40_seats_for_showtime(db_session, new_horario.id)
 
     return new_movie
 
 def get_all_movies(session):
-    """
-    Obtiene todas las películas desde la base de datos.
-    """
-    return session.query(Pelicula).all()  # Devuelve todas las películas
+    return session.query(Pelicula).all()
 
-#def insert_sample_data():
-    """
-    Función para insertar datos de películas de ejemplo con horarios y asientos.
-    """
-    db: Session = next(get_db())  # Obtener la sesión de base de datos
+def insert_sample_data():
+    db: Session = next(get_db())
 
-    # Definir horarios para las películas (por ejemplo: "2025-05-01 14:30")
     horarios_deadpool = [
         datetime(2025, 5, 1, 14, 30),
         datetime(2025, 5, 1, 18, 0),
@@ -107,16 +105,14 @@ def get_all_movies(session):
         datetime(2025, 5, 3, 19, 0),
     ]
 
-    # Crear películas y asociarles horarios
-    create_movie_with_seats(db, "Deadpool 3", "Acción", 120, horarios=horarios_deadpool)
-    create_movie_with_seats(db, "ParaNorman", "Comedia y Terror", 100, horarios=horarios_paranorman)
-    create_movie_with_seats(db, "Avatar", "Ciencia Ficcion", 150, horarios=horarios_avatar)
-    create_movie_with_seats(db, "La Era del Hielo 5", "Infantil", 150, horarios=horarios_era_de_hielo)
-    create_movie_with_seats(db, "Valiente", "Ciencia Ficción", 150, horarios=horarios_valiente)
+    create_movie_with_seats(db, "Deadpool 3", "Acción", 120,"cinemaster/src/views/images/Deadpool 3.jpg" ,horarios=horarios_deadpool)
+    create_movie_with_seats(db, "ParaNorman", "Comedia y Terror", 100,"cinemaster/src/views/images/ParaNorman.jpg", horarios=horarios_paranorman)
+    create_movie_with_seats(db, "Avatar", "Ciencia Ficcion", 150,"cinemaster/src/views/images/Avatar.jpg" ,horarios=horarios_avatar)
+    create_movie_with_seats(db, "La Era del Hielo 5", "Infantil", 150,"cinemaster/src/views/images/La Era del Hielo 5.jpg" ,horarios=horarios_era_de_hielo)
+    create_movie_with_seats(db, "Valiente", "Ciencia Ficción", 150,"cinemaster/src/views/images/Valiente.jpg" ,horarios=horarios_valiente)
 
-    db.close()  # Cerrar la sesión
+    db.close()
 
     print("Películas insertadas con éxito.")
 
-# Ejecutar la inserción de datos
 #insert_sample_data()

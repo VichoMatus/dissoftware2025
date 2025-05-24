@@ -6,14 +6,17 @@ import sys
 import os
 # Agregar el directorio de la aplicación para que pueda encontrar los módulos correctamente
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
+from models.cliente import Cliente  # Importar Cliente desde models.cliente para usar la clase correcta
 from models.movie import get_all_movies
 from models.database import get_db
-from views.reservations.seat_selection import open_seat_selection_view  # Importamos la función de seat_selection.py
+from views.reservations.seat_selection import *
+# Importa tus controladores reales aquí
+
+from services.booking_facade import BookingFacade
 
 
-class ReservationView(ctk.CTk):
-    def __init__(self, selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, open_cartelera_view):
+class ReservationView(ctk.CTkToplevel):
+    def __init__(self, selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, cliente):
         super().__init__()
 
         self.title("Cine Master")
@@ -23,13 +26,17 @@ class ReservationView(ctk.CTk):
         # Configurar el modo oscuro
         ctk.set_appearance_mode("dark")
 
+        # Guardamos el cliente logueado (debe ser instancia de models.cliente.Cliente)
+        self.cliente = cliente
+
         # Obtener la película desde la base de datos usando el ID
-        self.open_cartelera_view = open_cartelera_view
         self.selected_movie_Title = selected_movie_Title
         self.selected_movie_Duration = selected_movie_Duration
         self.selected_movie_Gender = selected_movie_Gender
         self.movie_image_path = movie_image_path
         self.showtimes_with_ids = showtimes_with_ids
+
+        self.booking_facade = BookingFacade()
         
         # Crear los dos frames
         self.header_frame = ctk.CTkFrame(self)
@@ -59,6 +66,21 @@ class ReservationView(ctk.CTk):
 
         self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
         self.app_name_label.pack(side="left", padx=10)
+
+        # Agregar botón con el nombre del cliente logueado
+        try:
+            # Cargar la imagen de perfil
+            profile_img = Image.open("cinemaster/src/views/images/perfil.png")  # Asegúrate de tener la imagen aquí
+            profile_img = profile_img.resize((35, 35))  # Ajustamos el tamaño
+            profile_img = ImageTk.PhotoImage(profile_img)
+        except:
+            profile_img = ImageTk.PhotoImage(Image.open("cinemaster/src/views/images/default.png").resize((35, 35)))  # Si no se encuentra la imagen, usar una predeterminada
+
+        # Botón de perfil con imagen y texto
+        self.profile_button = ctk.CTkButton(self.header_frame, text=self.cliente.nombre, font=("Arial", 14),
+                                            image=profile_img, compound="left", command=self.redirect_to_profile)
+        self.profile_button.image = profile_img  # Mantener la referencia de la imagen
+        self.profile_button.pack(side="right", padx=10)
 
         # Cargar y mostrar la imagen de la película
         self.load_movie_image(self.movie_image_path)
@@ -108,6 +130,16 @@ class ReservationView(ctk.CTk):
         except Exception as e:
             print(f"Error al cargar la imagen: {e}")
     
+    def redirect_to_profile(self):
+        """Función para redirigir al perfil del cliente cuando hace clic en el botón"""
+        print("Tipo de self.cliente en redirect_to_profile:", type(self.cliente))
+        print("Métodos disponibles en self.cliente:", dir(self.cliente))
+
+        self.destroy()  # Cierra la ventana actual
+        from views.profile_view import ProfileView  # Importamos la vista del perfil
+        profile_view = ProfileView(self.cliente)  # Pasamos el cliente logueado
+        profile_view.mainloop()  # Iniciamos la ventana del perfil
+    
     def reserve_movie(self):
         selected_showtime_string = self.selected_showtime.get()
 
@@ -135,16 +167,10 @@ class ReservationView(ctk.CTk):
 
         # Destruir la ventana de reserva (cerrar la ventana actual)
         self.destroy()
-
-        # Llamar a la vista de selección de asientos y pasarle el ID del horario seleccionado
-        open_seat_selection_view(selected_showtime_id, selected_showtime_date)  # Pasamos el ID y la fecha
-
+        # Llama a la vista de selección de asientos PASANDO LOS CONTROLADORES
+        open_seat_selection_view(selected_showtime_id, selected_showtime_date, self.selected_movie_Title, self.movie_image_path, self.cliente, self.booking_facade)
 
 
 # Ejecutar la aplicación
-def open_reservation_view(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, close_cartelera_callback):
-    app = ReservationView(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, close_cartelera_callback)
-    app.mainloop()
-    close_cartelera_callback()
-
-
+def open_reservation_view(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids,cliente):
+    ReservationView(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids,cliente)

@@ -26,9 +26,9 @@ class Asiento(Base):
     __tablename__ = "Asiento"
     ids_seats = Column(String(50), primary_key=True)
     id_Hall = Column(Integer, ForeignKey("Sala.id_Hall"))
-    Available = Column(Boolean)
+
     sala = relationship("Sala")
-    horarios = relationship("Horario", secondary="horario_asientos")  # Relacionamos los asientos con los horarios a través de la tabla intermedia
+    horarios = relationship("Horario", secondary="horario_asientos", overlaps="asientos,horario_asientos")
 
 class Administrador(Base):
     __tablename__ = 'Administrador'  # Nombre de la tabla en la base de datos   
@@ -53,6 +53,19 @@ class Cliente(Base):
     Reservation_history = Column(String, default="")  # Historial de reservas
     Password = Column(String, nullable=False)
 
+    # Agrega esta línea para establecer la relación con Reserva:
+    reservas = relationship("Reserva", back_populates="client")
+
+    def obtener_reservas_actuales(self):
+        from datetime import datetime
+        ahora = datetime.now()
+        return [r for r in self.reservas if r.funcion and r.funcion.Schedule >= ahora]
+
+    def obtener_historial_reservas(self):
+        from datetime import datetime
+        ahora = datetime.now()
+        return [r for r in self.reservas if r.funcion and r.funcion.Schedule < ahora]
+
 
 class Pelicula(Base):
     __tablename__ = 'Pelicula'  # Nombre de la tabla en la base de datos
@@ -60,6 +73,7 @@ class Pelicula(Base):
     Title = Column(String(255), nullable=False)
     Duration = Column(Integer, nullable=False)
     Gender = Column(String(50), nullable=True)
+    Image_path = Column(String(500), nullable=False)
 
     horarios = relationship('Horario', back_populates='pelicula')
 
@@ -70,16 +84,17 @@ class Horario(Base):
     fecha = Column(DateTime, nullable=False)  # Almacena la fecha y hora del horario
     pelicula_id = Column(Integer, ForeignKey('Pelicula.id_pelicula'))  # Relación con la película
     pelicula = relationship('Pelicula', back_populates='horarios')
-    asientos = relationship("Asiento", secondary="horario_asientos")  # Relacionamos la tabla 'Asiento' con 'Horario' mediante la tabla intermedia 'horario_asientos'
+    asientos = relationship("Asiento", secondary="horario_asientos", overlaps="horarios,horario_asientos")
 
 
 class HorarioAsientos(Base):
     __tablename__ = 'horario_asientos'
     horario_id = Column(Integer, ForeignKey('Horario.id'), primary_key=True)
     asiento_id = Column(String(50), ForeignKey('Asiento.ids_seats'), primary_key=True)
+    Available = Column(Boolean, default=True)
     # Relación entre Horario y Asiento
-    horario = relationship("Horario", backref="horario_asientos")
-    asiento = relationship("Asiento", backref="horario_asientos")
+    horario = relationship("Horario", backref="horario_asientos", overlaps="asientos,horarios")
+    asiento = relationship("Asiento", backref="horario_asientos", overlaps="asientos,horarios")
 
 
 class Promociones(Base):
@@ -91,25 +106,28 @@ class Promociones(Base):
 class Reserva(Base):
     __tablename__ = "Reserva"
     reservation_id = Column(Integer, primary_key=True, index=True)
-    client_id = Column(Integer, ForeignKey("Cliente.cliente_id"))  # Corregido a "cliente_id"
-    id_funcion = Column(Integer)
+    client_id = Column(Integer, ForeignKey("Cliente.cliente_id"))
+    id_funcion = Column(Integer, ForeignKey("Funcion.id_funcion"))  # Corregido aquí
     id_promotions = Column(Integer, ForeignKey("Promociones.id_promotions"))
     employee_id = Column(Integer, ForeignKey("Empleado.employee_id"))
 
-    # Relacionar con otras tablas
-    client = relationship("Cliente")
+    client = relationship("Cliente", back_populates="reservas")
+    funcion = relationship("Funcion")  # Ahora funcion se enlaza bien
     promocion = relationship("Promociones")
     empleado = relationship("Empleado")
+    reserva_asientos = relationship("Reserva_asientos", back_populates="reserva")
+
 
 class Funcion(Base):
     __tablename__ = "Funcion"
     id_funcion = Column(Integer, primary_key=True, index=True)
     id_pelicula = Column(Integer, ForeignKey("Pelicula.id_pelicula"))
     employee_id = Column(Integer, ForeignKey("Empleado.employee_id"))
-    Schedule = Column(String)
+    Schedule = Column(DateTime)
 
     pelicula = relationship("Pelicula")
     empleado = relationship("Empleado")
+    
 
 class Reserva_asientos(Base):
     __tablename__ = "Reserva_asientos"

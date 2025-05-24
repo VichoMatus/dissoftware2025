@@ -1,7 +1,8 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 from models.database import SessionLocal
-from models.cliente import Cliente  # Asegúrate de que Cliente tenga los métodos correctos
+from models.cliente import Cliente # Asegúrate de que Cliente tenga los métodos correctos
+from models.database import Reserva_asientos, SessionLocal
 from tkinter import simpledialog
 from PIL import Image, ImageTk  # Para el logo
 import os
@@ -12,6 +13,9 @@ class ProfileView(ctk.CTk):
         super().__init__()
         self.title("Perfil del Cliente")
         self.geometry("1280x720")
+
+        print("Tipo de cliente_obj:", type(cliente_obj))
+        print("Métodos disponibles:", dir(cliente_obj))
 
         self.cliente = cliente_obj
         self.crear_ui()
@@ -121,13 +125,13 @@ class ProfileView(ctk.CTk):
             session.close()
 
     def mostrar_reservas_actuales(self):
-        # Clear right frame and show current reservations
+        # Limpiar frame derecho y mostrar título
         for widget in self.frame_right.winfo_children():
             widget.destroy()
 
         ctk.CTkLabel(self.frame_right, text="Reservas Actuales", font=("Arial", 18)).pack(pady=10)
 
-        # Treeview for showing current reservations
+        # Crear treeview con columnas
         self.tree_reservas = ttk.Treeview(self.frame_right, columns=("ID", "Película", "Fecha", "Asiento"))
         self.tree_reservas.heading("#1", text="ID")
         self.tree_reservas.heading("#2", text="Película")
@@ -135,9 +139,19 @@ class ProfileView(ctk.CTk):
         self.tree_reservas.heading("#4", text="Asiento")
         self.tree_reservas.pack(fill="both", expand=True)
 
-        # Populate treeview (example data for now)
-        for reserva in self.cliente.obtener_reservas_actuales():  # Ensure this method exists in Cliente model
-            self.tree_reservas.insert("", "end", values=reserva)
+        with SessionLocal() as db:
+            cliente_actual = self.cliente
+            reservas = cliente_actual.obtener_reservas_actuales()
+
+            for reserva in reservas:
+                # Consultar asientos relacionados a esta reserva
+                asientos_obj = db.query(Reserva_asientos).filter(Reserva_asientos.reservation_id == reserva.reservation_id).all()
+                lista_asientos = ", ".join(a.asiento.ids_seats for a in asientos_obj) if asientos_obj else "Pendiente"
+
+                pelicula = reserva.funcion.pelicula.Title if reserva.funcion and reserva.funcion.pelicula else "N/A"
+                fecha = reserva.funcion.Schedule.strftime("%Y-%m-%d %H:%M") if reserva.funcion else "N/A"
+
+                self.tree_reservas.insert("", "end", values=(reserva.reservation_id, pelicula, fecha, lista_asientos))
 
         self.btn_cancelar_reserva = ctk.CTkButton(self.frame_right, text="Cancelar Reserva", command=self.cancelar_reserva)
         self.btn_cancelar_reserva.pack(pady=10)
@@ -151,13 +165,13 @@ class ProfileView(ctk.CTk):
             messagebox.showinfo("Éxito", f"Reserva {reserva_id} cancelada.")
 
     def mostrar_historial_reservas(self):
-        # Clear right frame and show reservation history
+        # Limpiar frame derecho y mostrar título
         for widget in self.frame_right.winfo_children():
             widget.destroy()
 
         ctk.CTkLabel(self.frame_right, text="Historial de Reservas", font=("Arial", 18)).pack(pady=10)
 
-        # Treeview for showing past reservations
+        # Crear treeview con columnas
         self.tree_historial = ttk.Treeview(self.frame_right, columns=("ID", "Película", "Fecha", "Asiento"))
         self.tree_historial.heading("#1", text="ID")
         self.tree_historial.heading("#2", text="Película")
@@ -165,6 +179,14 @@ class ProfileView(ctk.CTk):
         self.tree_historial.heading("#4", text="Asiento")
         self.tree_historial.pack(fill="both", expand=True)
 
-        # Populate treeview with past reservations (example data)
-        for reserva in self.cliente.obtener_historial_reservas():  # Ensure this method exists in Cliente model
-            self.tree_historial.insert("", "end", values=reserva)
+        with SessionLocal() as db:
+            reservas_historial = self.cliente.obtener_historial_reservas()
+
+            for reserva in reservas_historial:
+                asientos_obj = db.query(Reserva_asientos).filter(Reserva_asientos.reservation_id == reserva.reservation_id).all()
+                lista_asientos = ", ".join(a.asiento.ids_seats for a in asientos_obj) if asientos_obj else "Pendiente"
+
+                pelicula = reserva.funcion.pelicula.Title if reserva.funcion and reserva.funcion.pelicula else "N/A"
+                fecha = reserva.funcion.Schedule.strftime("%Y-%m-%d %H:%M") if reserva.funcion else "N/A"
+
+                self.tree_historial.insert("", "end", values=(reserva.reservation_id, pelicula, fecha, lista_asientos))

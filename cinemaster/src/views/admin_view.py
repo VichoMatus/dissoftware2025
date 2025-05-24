@@ -1,42 +1,51 @@
+# admin_view.py
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image,ImageTk
 from tkinter import ttk, messagebox
 from datetime import datetime
 from models.employee import Empleado
+from models.cliente import Cliente
 from models.database import SessionLocal
+import os
+import sys 
 
 
-class AdminView(ctk.CTk):  # Asegúrate de que esta clase sea AdminView para manejar a los empleados
+class AdminView(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Sistema de Gestión de Empleados")
+        self.title("Sistema de Gestión de Empleados y Clientes")
         self.geometry("1280x720")
         self.vistas = {}
-
-
         self.crear_ui()
 
     def crear_ui(self):
-        self.frame_header = ctk.CTkFrame(self)
-        self.frame_header.pack(fill="x",padx=20, pady=10)
+        
+        self.header_frame = ctk.CTkFrame(self)
+        self.header_frame.pack(fill='x', padx=20, pady=10)
 
-        try:
-            logo_img = ctk.CTkImage(light_image=Image.open("src/views/images/logo.png"), size=(100, 100))
-            logo_label = ctk.CTkLabel(self.frame_header, image=logo_img, text="")
-        except:
-            logo_label = ctk.CTkLabel(self.frame_header, text="[Logo]")
+        # Frame para el header
+        current_dir = os.path.dirname(__file__)  # Obtiene el directorio actual
+        logo_path = os.path.join(current_dir, "images", "logo.png")  # Ruta correcta
 
-        logo_label.pack(side="left", padx=10)
-        ctk.CTkLabel(self.frame_header, text="Gestión Administrador", font=("Arial", 24, "bold")).pack(side="left", padx=10)
+        self.logo_image = Image.open(logo_path)  # Ajustamos la ruta aquí
+        self.logo_image = self.logo_image.resize((100, 100))  # Redimensionar si es necesario
+        self.logo_photo = ImageTk.PhotoImage(self.logo_image)
+
+        self.logo_label = ctk.CTkLabel(self.header_frame, image=self.logo_photo, text="")  # Corregido para evitar texto
+        self.logo_label.pack(side="left", padx=10)
+
+        self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
+        self.app_name_label.pack(side="left", padx=10)
 
         self.frame_menu = ctk.CTkFrame(self, width=150)
         self.frame_menu.pack(side="left", fill="y")
 
         botones = [
-            ("Gestor Empleados", lambda: self.mostrar_vista("leer"))
+            ("Gestor Empleados", lambda: self.mostrar_vista("empleados")),
+            ("Gestor Clientes", lambda: self.mostrar_vista("clientes"))
         ]
         for texto, accion in botones:
-            ctk.CTkButton(self.frame_menu, text=texto, command=accion).pack(pady=10, padx=10, fill="x")
+            ctk.CTkButton(self.frame_menu, text=texto, command=accion).pack(pady=10, padx=10)
 
         self.frame_central = ctk.CTkFrame(self)
         self.frame_central.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -50,9 +59,10 @@ class AdminView(ctk.CTk):  # Asegúrate de que esta clase sea AdminView para man
         self.textbox_historial = ctk.CTkTextbox(self.frame_historial, height=100)
         self.textbox_historial.pack(padx=10, pady=5, fill="x")
 
-        self.configurar_vistas()
-        self.mostrar_Empleados()
-        self.mostrar_vista("leer")
+        self.configurar_vistas_empleados()
+        self.configurar_vistas_clientes()
+
+        self.mostrar_vista("empleados")
         self.agregar_a_historial("¡Bienvenido! Gracias por preferirnos")
 
     def agregar_a_historial(self, mensaje):
@@ -60,222 +70,298 @@ class AdminView(ctk.CTk):  # Asegúrate de que esta clase sea AdminView para man
         self.textbox_historial.insert("end", f"[{hora}] {mensaje}\n")
         self.textbox_historial.see("end")
 
-    def mostrar_vista(self, vista):
+    def mostrar_vista(self, nombre):
         for frame in self.vistas.values():
             frame.pack_forget()
-        self.vistas[vista].pack(fill="both", expand=True)
+        self.vistas[nombre].pack(fill="both", expand=True)
 
-    def configurar_vistas(self):
-        # CREAR (Formulario de agregar empleado)
+    # ============================ EMPLEADOS ============================
+
+    def configurar_vistas_empleados(self):
         frame = ctk.CTkFrame(self.frame_vistas)
-        self.vistas["crear"] = frame
-        ctk.CTkLabel(frame, text="Agregar Empleado", font=("Arial", 16, "bold")).pack(pady=10)
+        self.vistas["empleados"] = frame
+        ctk.CTkLabel(frame, text="Gestión de Empleados", font=("Arial", 16, "bold")).pack(pady=10)
 
-        # FUNCIONES
-        frame = ctk.CTkFrame(self.frame_vistas)
-        self.vistas["Funciones"] = frame
-        ctk.CTkLabel(frame, text="Funciones", font=("Arial", 16, "bold")).pack(pady=10)
+        self.tree_empleados = ttk.Treeview(frame, columns=("ID", "Nombre", "Email"), show="headings", height=8)
+        for col in ("ID", "Nombre", "Email"):
+            self.tree_empleados.heading(col, text=col)
+            self.tree_empleados.column(col, width=150)
+        self.tree_empleados.pack(padx=10, pady=5, fill="x")
 
-        # Formulario oculto de crear empleado
-        self.form_crear_frame = ctk.CTkFrame(frame)
-        self.entry_crear_nombre = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Nombre")
-        self.entry_crear_email = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Email")
-        self.entry_crear_password = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Password", show="*")
-        self.entry_crear_nombre.pack(pady=5)
-        self.entry_crear_email.pack(pady=5)
-        self.entry_crear_password.pack(pady=5)    
-        self.form_crear_frame.pack_forget()  # Ocultamos el formulario inicialmente
-
-        # LEER (Listado de empleados)
-        frame = ctk.CTkFrame(self.frame_vistas)
-        self.vistas["leer"] = frame
-        ctk.CTkLabel(frame, text="Listado de Empleados", font=("Arial", 16, "bold")).pack(pady=10)
-
-        # Treeview
-        columns = ("ID", "Nombre", "Email")
-        self.tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse", height=8)
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
-        self.tree.pack(padx=10, pady=5, fill="x")
-
-        # Botones de acción
         action_frame = ctk.CTkFrame(frame)
         action_frame.pack(pady=10)
+        ctk.CTkButton(action_frame, text="Agregar Empleado", command=self.form_empleado).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Actualizar Empleado", command=self.form_actualizar_empleado).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Eliminar Empleado", fg_color="red", hover_color="#b71c1c", command=self.eliminar_empleado).pack(side="left", padx=10)
 
-        ctk.CTkButton(action_frame, text="Agregar Empleado",
-              command=self.mostrar_formulario_creacion).pack(side="left", padx=10)
-        ctk.CTkButton(action_frame, text="Actualizar Datos",
-                  command=self.mostrar_formulario_actualizacion).pack(side="left", padx=10)
-        ctk.CTkButton(action_frame, text="Eliminar Seleccionado", fg_color="red", hover_color="#b71c1c",
-                  command=self.eliminar_empleado_seleccionado).pack(side="left", padx=10)
+        self.form_empleado_frame = ctk.CTkFrame(frame)
+        self.entry_empleado_nombre = ctk.CTkEntry(self.form_empleado_frame, placeholder_text="Nombre")
+        self.entry_empleado_email = ctk.CTkEntry(self.form_empleado_frame, placeholder_text="Email")
+        self.entry_empleado_password = ctk.CTkEntry(self.form_empleado_frame, placeholder_text="Contraseña", show="*")
+        for e in (self.entry_empleado_nombre, self.entry_empleado_email, self.entry_empleado_password):
+            e.pack(pady=5)
+        self.boton_guardar_empleado = ctk.CTkButton(self.form_empleado_frame, text="Guardar", command=self.guardar_empleado)
+        self.boton_guardar_empleado.pack(pady=5)
+        self.form_empleado_frame.pack_forget()
 
-        # Formulario de creación oculto
-        self.form_crear_frame = ctk.CTkFrame(frame)
-        self.entry_crear_nombre_leer = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Nombre")
-        self.entry_crear_email_leer = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Email")
-        self.entry_crear_password_leer = ctk.CTkEntry(self.form_crear_frame, placeholder_text="Contraseña")
-        self.entry_crear_nombre_leer.pack(pady=5)
-        self.entry_crear_email_leer.pack(pady=5)
-        self.entry_crear_password_leer.pack(pady=5)
-        ctk.CTkButton(self.form_crear_frame, text="Guardar Empleado", command=self.crear_empleado_desde_form).pack(pady=10)
-        self.form_crear_frame.pack_forget()
+        self.mostrar_empleados()
 
-    
-        # ACTUALIZAR
-        frame = ctk.CTkFrame(self.frame_vistas)
-        self.vistas["actualizar"] = frame
-        ctk.CTkLabel(frame, text="Actualizar Empleado", font=("Arial", 16, "bold")).pack(pady=10)
-        self.entry_actualizar_id = ctk.CTkEntry(frame, placeholder_text="ID")
-        self.entry_actualizar_id.pack(pady=5)
-        self.entry_actualizar_nombre = ctk.CTkEntry(frame, placeholder_text="Nuevo Nombre")
-        self.entry_actualizar_nombre.pack(pady=5)
-        self.entry_actualizar_email = ctk.CTkEntry(frame, placeholder_text="Nuevo Email")
-        self.entry_actualizar_email.pack(pady=5)
-        self.entry_actualizar_password = ctk.CTkEntry(frame, placeholder_text="Nueva Contraseña")
-        self.entry_actualizar_password.pack(pady=5)
-        ctk.CTkButton(frame, text="Actualizar", command=self.guardar_cambios_actualizacion).pack(pady=10)
+    def form_empleado(self):
+        self.entry_empleado_nombre.delete(0, "end")
+        self.entry_empleado_email.delete(0, "end")
+        self.entry_empleado_password.delete(0, "end")
+        self.form_empleado_frame.pack(pady=10)
+        self.boton_guardar_empleado.pack(pady=5)
+        if hasattr(self, 'boton_actualizar_empleado'):
+            self.boton_actualizar_empleado.pack_forget()
 
-        # ELIMINAR
-        frame = ctk.CTkFrame(self.frame_vistas)
-        self.vistas["eliminar"] = frame
-        ctk.CTkLabel(frame, text="Eliminar Empleado", font=("Arial", 16, "bold")).pack(pady=10)
-        self.entry_eliminar_id = ctk.CTkEntry(frame, placeholder_text="ID")
-        self.entry_eliminar_id.pack(pady=5)
-        ctk.CTkButton(frame, text="Eliminar", command=self.eliminar_empleado_seleccionado).pack(pady=10)
-
-
-    def mostrar_formulario_creacion(self):
-        self.form_crear_frame.pack(pady=10)
-
-
-    def crear_empleado_desde_form(self):
-        nombre = self.entry_crear_nombre_leer.get()
-        email = self.entry_crear_email_leer.get()
-        password = self.entry_crear_password_leer.get()
+    def guardar_empleado(self):
+        nombre = self.entry_empleado_nombre.get()
+        email = self.entry_empleado_email.get()
+        password = self.entry_empleado_password.get()
         if not (nombre and email):
-            self.agregar_a_historial("Todos los campos deben estar completos para crear un empleado.")
+            self.agregar_a_historial("Complete todos los campos.")
             return
         db = SessionLocal()
         try:
-            nuevo = Empleado(Name=nombre, Email=email, Password=password)
-            db.add(nuevo)
+            emp = Empleado(Name=nombre, Email=email, Password=password)
+            db.add(emp)
             db.commit()
-            self.agregar_a_historial(f"Empleado '{nombre}' creado correctamente.")
-            self.mostrar_Empleados()
-            self.form_crear_frame.pack_forget()
+            self.agregar_a_historial(f"Empleado '{nombre}' agregado.")
+            self.mostrar_empleados()
+            self.form_empleado_frame.pack_forget()
         except Exception as e:
             self.agregar_a_historial(f"Error al crear empleado: {e}")
         finally:
             db.close()
-    
 
-
-
-    def mostrar_Empleados(self):
-        if hasattr(self, "tree"):
-            for item in self.tree.get_children():
-                self.tree.delete(item)
+    def mostrar_empleados(self):
+        for i in self.tree_empleados.get_children():
+            self.tree_empleados.delete(i)
         db = SessionLocal()
         try:
-            empleados = db.query(Empleado).all()
-            for emp in empleados:
-                self.tree.insert("", "end", values=(emp.employee_id, emp.Name, emp.Email,emp.Password))
+            for emp in db.query(Empleado).all():
+                self.tree_empleados.insert("", "end", values=(emp.employee_id, emp.Name, emp.Email))
             self.agregar_a_historial("Listado de empleados actualizado.")
         except Exception as e:
-            self.agregar_a_historial(f"Error al mostrar empleados: {e}")
+            self.agregar_a_historial(f"Error al cargar empleados: {e}")
         finally:
             db.close()
 
 
-
-    def mostrar_formulario_actualizacion(self):
-        seleccionado = self.tree.focus()
-        if not seleccionado:
-            self.agregar_a_historial("No hay empleado seleccionado.")
+    def form_actualizar_empleado(self):
+        item = self.tree_empleados.focus()
+        if not item:
+            self.agregar_a_historial("Selecciona un empleado.")
             return
-        valores = self.tree.item(seleccionado)["values"]
-        self.empleado_id_actual = valores[0]
-    
-        # Rellenar los campos existentes
-        self.entry_actualizar_id.delete(0, "end")
-        self.entry_actualizar_nombre.delete(0, "end")
-        self.entry_actualizar_email.delete(0, "end")
-        self.entry_actualizar_password.delete(0, "end")
-    
-        self.entry_actualizar_id.insert(0, valores[0])
-        self.entry_actualizar_nombre.insert(0, valores[1])
-        self.entry_actualizar_email.insert(0, valores[2])
-        self
+        emp_id, nombre, email = self.tree_empleados.item(item)["values"]
+        self.entry_empleado_nombre.delete(0, "end")
+        self.entry_empleado_email.delete(0, "end")
+        self.entry_empleado_password.delete(0, "end")
+        self.entry_empleado_nombre.insert(0, nombre)
+        self.entry_empleado_email.insert(0, email)
 
-        self.mostrar_vista("actualizar")    
+        if hasattr(self, 'boton_guardar_empleado'):
+            self.boton_guardar_empleado.pack_forget()
 
+        if hasattr(self, 'boton_actualizar_empleado'):
+            self.boton_actualizar_empleado.destroy()
 
-
-    def guardar_cambios_actualizacion(self):
-        nuevo_nombre = self.entry_actualizar_nombre.get()
-        nuevo_email = self.entry_actualizar_email.get()
-        nuevo_password = self.entry_actualizar_password.get()
-        empleado_id = self.entry_actualizar_id.get()
-
-        if not (nuevo_nombre and nuevo_email):
-            self.agregar_a_historial("Todos los campos deben estar completos.")
-            return
-
-        db = SessionLocal()
-        try:
-            # Verificar si el nuevo email ya existe en otro empleado
-            email_duplicado = db.query(Empleado).filter(
-                Empleado.Email == nuevo_email,
-                Empleado.employee_id != empleado_id  # asegurarse de que no sea el mismo empleado
-            ).first()
-
-            if email_duplicado:
-                self.agregar_a_historial(f"Ya existe un empleado con el email '{nuevo_email}'.")
-                return
-
-            empleado = db.query(Empleado).filter(Empleado.employee_id == empleado_id).first()
-            if empleado:
-                empleado.Name = nuevo_nombre
-                empleado.Email = nuevo_email
-                empleado.Password = nuevo_password
-                db.commit()
-                self.agregar_a_historial(f"Empleado ID {empleado_id} actualizado.")
-                self.mostrar_Empleados()
-            else:
-                self.agregar_a_historial(f"No se encontró empleado con ID {empleado_id}.")
-        except Exception as e:
-            self.agregar_a_historial(f"Error al actualizar empleado: {e}")
-        finally:
-            db.close()
-
-
-
-    def eliminar_empleado_seleccionado(self):
-        seleccionado = self.tree.focus()
-        if not seleccionado:
-            self.agregar_a_historial("No hay empleado seleccionado.")
-            return
-
-        empleado_id = self.tree.item(seleccionado)["values"][0]
-        
-        # Mostrar un cuadro de confirmación antes de eliminar el empleado
-        respuesta = messagebox.askyesno("Confirmar Eliminación", f"¿Estás seguro de que deseas eliminar el empleado con ID {empleado_id}?")
-        if respuesta:
+        def actualizar():
             db = SessionLocal()
             try:
-                # Buscar al empleado por su ID
-                empleado = db.query(Empleado).filter(Empleado.employee_id == empleado_id).first()
-                if empleado:
-                    db.delete(empleado)
-                    db.commit()
-                    self.agregar_a_historial(f"Empleado ID {empleado_id} eliminado.")
-                    self.mostrar_Empleados()
-                else:
-                    self.agregar_a_historial(f"No se encontró empleado con ID {empleado_id}.")
+                emp = db.query(Empleado).get(emp_id)
+                emp.Name = self.entry_empleado_nombre.get()
+                emp.Email = self.entry_empleado_email.get()
+                emp.Password = self.entry_empleado_password.get()
+                db.commit()
+                self.agregar_a_historial(f"Empleado ID {emp_id} actualizado.")
+                self.mostrar_empleados()
+                self.form_empleado_frame.pack_forget()
             except Exception as e:
-                self.agregar_a_historial(f"Error al eliminar empleado: {e}")
+                self.agregar_a_historial(f"Error al actualizar: {e}")
             finally:
                 db.close()
-        else:
-            self.agregar_a_historial(f"Cancelada la eliminación del empleado ID {empleado_id}.")
+
+        self.boton_actualizar_empleado = ctk.CTkButton(self.form_empleado_frame, text="Actualizar", command=actualizar)
+        self.boton_actualizar_empleado.pack(pady=5)
+        self.form_empleado_frame.pack(pady=10)
+
+
+    def eliminar_empleado(self):
+        item = self.tree_empleados.focus()
+        if not item:
+            self.agregar_a_historial("Selecciona un empleado.")
+            return
+        emp_id = self.tree_empleados.item(item)["values"][0]
+        if messagebox.askyesno("Confirmar", f"¿Eliminar empleado ID {emp_id}?"):
+            db = SessionLocal()
+            try:
+                emp = db.query(Empleado).get(emp_id)
+                db.delete(emp)
+                db.commit()
+                self.agregar_a_historial(f"Empleado ID {emp_id} eliminado.")
+                self.mostrar_empleados()
+            except Exception as e:
+                self.agregar_a_historial(f"Error al eliminar: {e}")
+            finally:
+                db.close()
+
+    # ============================ CLIENTES ============================
+    
+    def configurar_vistas_clientes(self):
+        frame = ctk.CTkFrame(self.frame_vistas)
+        self.vistas["clientes"] = frame
+        ctk.CTkLabel(frame, text="Gestión de Clientes", font=("Arial", 16, "bold")).pack(pady=10)
+
+        self.tree_clientes = ttk.Treeview(frame, columns=("ID", "Nombre", "Email", "Membresía"), show="headings", height=8)
+        for col in ("ID", "Nombre", "Email", "Membresía"):
+            self.tree_clientes.heading(col, text=col)
+            self.tree_clientes.column(col, width=150)
+        self.tree_clientes.pack(padx=10, pady=5, fill="x")
+
+        action_frame = ctk.CTkFrame(frame)
+        action_frame.pack(pady=10)
+        ctk.CTkButton(action_frame, text="Agregar Cliente", command=self.form_cliente).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Actualizar Cliente", command=self.form_actualizar_cliente).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Eliminar Cliente", fg_color="red", hover_color="#b71c1c", command=self.eliminar_cliente).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Clonar Cliente", command=self.clonar_cliente_seleccionado).pack(side="left", padx=10)
+
+        self.form_cliente_frame = ctk.CTkFrame(frame)
+        self.entry_cliente_nombre = ctk.CTkEntry(self.form_cliente_frame, placeholder_text="Nombre")
+        self.entry_cliente_email = ctk.CTkEntry(self.form_cliente_frame, placeholder_text="Email")
+        self.entry_cliente_password = ctk.CTkEntry(self.form_cliente_frame, placeholder_text="Contraseña", show="*")
+        for e in (self.entry_cliente_nombre, self.entry_cliente_email, self.entry_cliente_password):
+            e.pack(pady=5)
+        self.boton_guardar_cliente = ctk.CTkButton(self.form_cliente_frame, text="Guardar", command=self.guardar_cliente)
+        self.boton_guardar_cliente.pack(pady=5)        
+        self.form_cliente_frame.pack_forget()
+
+        self.mostrar_clientes()
+
+    def form_cliente(self):
+        self.entry_cliente_nombre.delete(0, "end")
+        self.entry_cliente_email.delete(0, "end")
+        self.entry_cliente_password.delete(0, "end")
+        self.form_cliente_frame.pack(pady=10)
+        self.boton_guardar_cliente.pack(pady=5)
+        if hasattr(self, 'boton_actualizar_cliente'):
+            self.boton_actualizar_cliente.pack_forget()
+
+    def guardar_cliente(self):
+        nombre = self.entry_cliente_nombre.get()
+        email = self.entry_cliente_email.get()
+        password = self.entry_cliente_password.get()
+        if not (nombre and email):
+            self.agregar_a_historial("Complete todos los campos.")
+            return
+        db = SessionLocal()
+        try:
+            cliente = Cliente(nombre=nombre, Email=email, Password=password, Reservation_history="", Membership=False)
+            db.add(cliente)
+            db.commit()
+            self.agregar_a_historial(f"Cliente '{nombre}' agregado.")
+            self.mostrar_clientes()
+            self.form_cliente_frame.pack_forget()
+        except Exception as e:
+            self.agregar_a_historial(f"Error al crear cliente: {e}")
+        finally:
+            db.close()
+
+    def mostrar_clientes(self):
+        for i in self.tree_clientes.get_children():
+            self.tree_clientes.delete(i)
+        db = SessionLocal()
+        try:
+            for cl in db.query(Cliente).all():
+                self.tree_clientes.insert("", "end", values=(cl.cliente_id, cl.nombre, cl.Email, "Sí" if cl.Membership else "No"))
+            self.agregar_a_historial("Listado de clientes actualizado.")
+        except Exception as e:
+            self.agregar_a_historial(f"Error al cargar clientes: {e}")
+        finally:
+            db.close()
+
+    def form_actualizar_cliente(self):
+        item = self.tree_clientes.focus()
+        if not item:
+            self.agregar_a_historial("Selecciona un cliente.")
+            return
+        cl_id, nombre, email, _ = self.tree_clientes.item(item)["values"]
+        self.entry_cliente_nombre.delete(0, "end")
+        self.entry_cliente_email.delete(0, "end")
+        self.entry_cliente_password.delete(0, "end")
+        self.entry_cliente_nombre.insert(0, nombre)
+        self.entry_cliente_email.insert(0, email)
+
+        if hasattr(self, 'boton_guardar_cliente'):
+            self.boton_guardar_cliente.pack_forget()
+
+        if hasattr(self, 'boton_actualizar_cliente'):
+            self.boton_actualizar_cliente.destroy()
+
+        def actualizar():
+            db = SessionLocal()
+            try:
+                cl = db.query(Cliente).get(cl_id)
+                cl.nombre = self.entry_cliente_nombre.get()
+                cl.Email = self.entry_cliente_email.get()
+                cl.Password = self.entry_cliente_password.get()
+                db.commit()
+                self.agregar_a_historial(f"Cliente ID {cl_id} actualizado.")
+                self.mostrar_clientes()
+                self.form_cliente_frame.pack_forget()
+            except Exception as e:
+                self.agregar_a_historial(f"Error al actualizar: {e}")
+            finally:
+                db.close()
+
+        self.boton_actualizar_cliente = ctk.CTkButton(self.form_cliente_frame, text="Actualizar", command=actualizar)
+        self.boton_actualizar_cliente.pack(pady=5)
+        self.form_cliente_frame.pack(pady=10)
+
+    def eliminar_cliente(self):
+        item = self.tree_clientes.focus()
+        if not item:
+            self.agregar_a_historial("Selecciona un cliente.")
+            return
+        cl_id = self.tree_clientes.item(item)["values"][0]
+        if messagebox.askyesno("Confirmar", f"¿Eliminar cliente ID {cl_id}?"):
+            db = SessionLocal()
+            try:
+                cl = db.query(Cliente).get(cl_id)
+                db.delete(cl)
+                db.commit()
+                self.agregar_a_historial(f"Cliente ID {cl_id} eliminado.")
+                self.mostrar_clientes()
+            except Exception as e:
+                self.agregar_a_historial(f"Error al eliminar: {e}")
+            finally:
+                db.close()
+
+    def clonar_cliente_seleccionado(self):
+        item = self.tree_clientes.focus()
+        if not item:
+            self.agregar_a_historial("No hay cliente seleccionado para clonar.")
+            return
+        cliente_id = self.tree_clientes.item(item)["values"][0]
+        db = SessionLocal()
+        try:
+            cliente_original = db.query(Cliente).filter(Cliente.cliente_id == cliente_id).first()
+            if cliente_original:
+                cliente_clonado = cliente_original.clone()
+                # Mostrar formulario de creación con datos clonados
+                self.form_cliente()
+                self.entry_cliente_nombre.delete(0, "end")
+                self.entry_cliente_nombre.insert(0, cliente_clonado.nombre)
+                self.entry_cliente_email.delete(0, "end")
+                self.entry_cliente_email.insert(0, "")  # Limpiar email para nuevo
+                self.entry_cliente_password.delete(0, "end")
+                self.entry_cliente_password.insert(0, "")
+                self.agregar_a_historial(f"Cliente ID {cliente_id} clonado. Edite los datos y guarde.")
+            else:
+                self.agregar_a_historial(f"No se encontró cliente con ID {cliente_id}.")
+        except Exception as e:
+            self.agregar_a_historial(f"Error al clonar cliente: {e}")
+        finally:
+            db.close()
+
