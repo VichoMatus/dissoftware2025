@@ -1,16 +1,37 @@
 from models.database import Reserva, get_db, Reserva_asientos, HorarioAsientos
 from sqlalchemy.orm import Session
 import uuid
+from src.utils.decorators import medir_tiempo
+from models.seat import Seat
 
 class ReserveSeatCommand:
     def __init__(self, client_id, id_funcion, seat_id):
         self.client_id = client_id
         self.id_funcion = id_funcion
         self.seat_id = seat_id
-
+    @medir_tiempo
     def execute(self):
         db: Session = next(get_db())
 
+        # Obtener datos asiento desde BD
+        horario_asiento = db.query(HorarioAsientos)\
+            .filter(HorarioAsientos.horario_id == self.id_funcion,
+                    HorarioAsientos.asiento_id == self.seat_id)\
+            .first()
+
+        if not horario_asiento:
+            db.rollback()
+            raise ValueError("El asiento no está asignado para este horario.")
+
+        # Crear objeto Seat y Proxy
+        seat_obj = Seat(
+            seat_id=horario_asiento.asiento.ids_seats,
+            row=getattr(horario_asiento.asiento, "row", None),
+            column=getattr(horario_asiento.asiento, "column", None),
+            status="Disponible" if horario_asiento.Available else "Reservado"
+        )
+
+        # Si proxy reserva en memoria, seguimos con DB
         nueva_reserva = Reserva(
             client_id=self.client_id,
             id_funcion=self.id_funcion,
@@ -21,19 +42,7 @@ class ReserveSeatCommand:
         db.commit()
         db.refresh(nueva_reserva)
 
-        horario_asiento = db.query(HorarioAsientos)\
-            .filter(HorarioAsientos.horario_id == self.id_funcion,
-                    HorarioAsientos.asiento_id == self.seat_id)\
-            .first()
-
-        if not horario_asiento:
-            db.rollback()
-            raise ValueError("El asiento no está asignado para este horario.")
-
-        if not horario_asiento.Available:
-            db.rollback()
-            raise ValueError("El asiento no está disponible para este horario.")
-
+        # Marcar asiento como no disponible en BD
         horario_asiento.Available = False
         db.add(horario_asiento)
 
@@ -47,7 +56,7 @@ class ReserveSeatCommand:
         db.commit()
         db.refresh(nueva_reserva)
 
-        # ✅ Precargar relaciones para evitar errores por sesión cerrada
+        # Precargar relaciones
         _ = nueva_reserva.client
         _ = nueva_reserva.funcion
         if nueva_reserva.funcion:

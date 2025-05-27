@@ -6,6 +6,8 @@ from controllers.reservation_controller import ReservationController
 from controllers.payment_controller import PaymentController
 from controllers.receipt_controller import ReceiptController
 
+from models.database import HorarioAsientos, get_db
+
 class BookingFacade:
     def __init__(self):
         self._observers = []
@@ -14,7 +16,7 @@ class BookingFacade:
         self.payment_system = PaymentSystem()
         self.receipt_system = ReceiptSystem()
 
-        self.reservation = ReservationController()
+        self.reservation = ReservationController(self.reservation_system)
         self.payment = PaymentController(self.payment_system)
         self.receipt = ReceiptController()
 
@@ -48,3 +50,14 @@ class BookingFacade:
         self.notify_observers(reserva)
 
         return reserva
+    def get_available_seats(self, showtime_id):
+        db = next(get_db())
+        horario_asientos = db.query(HorarioAsientos)\
+            .filter(HorarioAsientos.horario_id == showtime_id, HorarioAsientos.Available == True).all()
+        
+        available_seats = []
+        for ha in horario_asientos:
+            asiento = ha.asiento
+            if asiento:
+                available_seats.append(asiento.ids_seats)
+        return available_seats

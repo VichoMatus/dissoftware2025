@@ -132,8 +132,7 @@ class SeatSelectionView(ctk.CTkToplevel):
             asiento = ha.asiento
             if asiento:
                 available_seats.append(asiento.ids_seats)
-
-        return available_seats
+        return self.booking_facade.get_available_seats(showtime_id)
 
 
 

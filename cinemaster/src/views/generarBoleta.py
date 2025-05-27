@@ -4,6 +4,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from datetime import datetime
 from tkinter import messagebox
+from utils.decorators import medir_tiempo
 
 class generarBoleta:
     def __init__(self, movie_name, showtime, seat, imagen, client_name="Cliente", logo_path=None):
@@ -13,7 +14,7 @@ class generarBoleta:
         self.client_name = client_name
         self.imagen = imagen
         self.logo_path = os.path.abspath("cinemaster/src/views/images/logo.png")
-
+    @medir_tiempo
     def crear_pdf(self, ruta_pdf):
         try:
             fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M:%S")

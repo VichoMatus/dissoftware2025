@@ -10,6 +10,7 @@ from models.cliente import Cliente  # Importar Cliente desde models.cliente para
 from models.movie import get_all_movies
 from models.database import get_db
 from views.reservations.seat_selection import *
+from src.utils.decorators import medir_tiempo
 # Importa tus controladores reales aquí
 
 from services.booking_facade import BookingFacade
@@ -48,7 +49,7 @@ class ReservationView(ctk.CTkToplevel):
 
         # Crear los widgets dentro de este frame
         self.create_widgets()
-
+    @medir_tiempo
     def create_widgets(self):
 
 
