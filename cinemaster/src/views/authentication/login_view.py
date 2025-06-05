@@ -7,15 +7,15 @@ from utils.decorators import medir_tiempo
 import os
 
 class LoginView(ctk.CTk):
-    def __init__(self, open_register_view, open_cartelera_view, open_trabajador_view, open_admin_view):
+    def __init__(self, open_register, open_cartelera, open_trabajador, open_admin):
         super().__init__()
         self.title("Login")
         self.geometry("1280x800")
 
-        self.open_register_view = open_register_view
-        self.open_cartelera_view = open_cartelera_view
-        self.open_trabajador_view = open_trabajador_view 
-        self.open_admin_view = open_admin_view
+        self.open_register = open_register
+        self.open_cartelera = open_cartelera
+        self.open_trabajador = open_trabajador 
+        self.open_admin = open_admin
 
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.pack(fill='x', padx=20, pady=10)
@@ -50,7 +50,7 @@ class LoginView(ctk.CTk):
         self.login_button = ctk.CTkButton(self.login_frame, text="Login", command=self.login)
         self.login_button.pack(pady=20)
 
-        self.register_button = ctk.CTkButton(self.login_frame, text="¿No tienes una cuenta? Regístrate", command=self.open_register)
+        self.register_button = ctk.CTkButton(self.login_frame, text="¿No tienes una cuenta? Regístrate", command=self.open_register_view)
         self.register_button.pack(pady=5)
 
     @medir_tiempo
@@ -76,17 +76,17 @@ class LoginView(ctk.CTk):
         if tipo_usuario == "cliente":
             messagebox.showinfo("Éxito", "Login como Cliente completado!")
             self.destroy()
-            self.open_cartelera_view(usuario)
+            self.open_cartelera(usuario)
 
         elif tipo_usuario == "empleado":
             messagebox.showinfo("Éxito", "Login como Empleado completado")
             self.destroy()
-            self.open_trabajador_view(usuario.Name)
+            self.open_trabajador(usuario.Name)
 
         elif tipo_usuario == "admin":
             messagebox.showinfo("Éxito", "Login como Admin completado!")
             self.destroy()
-            self.open_admin_view()
+            self.open_admin()
 
         else:
             messagebox.showerror("Error", "Email o contraseña incorrecta.")
@@ -97,6 +97,6 @@ class LoginView(ctk.CTk):
 
         db.close()
 
-    def open_register(self):
-        self.open_register_view()
+    def open_register_view(self):
+        self.open_register()
         self.quit()

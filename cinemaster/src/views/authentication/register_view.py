@@ -67,6 +67,7 @@ class RegisterView(ctk.CTk):
             messagebox.showinfo("Success", f"Cliente {cliente.nombre} registrado exitosamente!")
 
             # Después de registrar, volvemos a la ventana de login
+            self.open_login_view()  # Volver a la vista de login
             self.destroy()  # Cerrar la ventana de registro
         except Exception as e:
             # Si ocurre un error (por ejemplo, email duplicado), mostramos el mensaje de error
