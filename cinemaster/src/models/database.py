@@ -48,23 +48,15 @@ class Cliente(Base):
     __tablename__ = "Cliente"
     cliente_id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
-    Email = Column(String, unique=True, nullable=False)  # Asegúrate de que el campo se llama 'Email'
-    Membership = Column(Boolean, default=False)  # Estado de la membresía
-    Reservation_history = Column(String, default="")  # Historial de reservas
+    Email = Column(String, unique=True, nullable=False)
+    Membership = Column(Boolean, default=False)
+    Reservation_history = Column(String, default="")
     Password = Column(String, nullable=False)
 
-    # Agrega esta línea para establecer la relación con Reserva:
     reservas = relationship("Reserva", back_populates="client")
 
-    def obtener_reservas_actuales(self):
-        from datetime import datetime
-        ahora = datetime.now()
-        return [r for r in self.reservas if r.funcion and r.funcion.Schedule >= ahora]
-
-    def obtener_historial_reservas(self):
-        from datetime import datetime
-        ahora = datetime.now()
-        return [r for r in self.reservas if r.funcion and r.funcion.Schedule < ahora]
+    def __repr__(self):
+        return f"<Cliente(cliente_id={self.cliente_id}, Name={self.nombre}, Email={self.Email}, Membership={self.Membership})>"
 
 
 class Pelicula(Base):
