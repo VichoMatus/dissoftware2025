@@ -1,11 +1,15 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+import os
 
 # Base declarativa de SQLAlchemy
 Base = declarative_base()
 
 # Configuración de la conexión con la base de datos
-DATABASE_URL = "sqlite:///./test.db"  # Usa SQLite para pruebas
+# Obtener la ruta absoluta del directorio raíz del proyecto
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+DATABASE_PATH = os.path.join(PROJECT_ROOT, "test.db")
+DATABASE_URL = f"sqlite:///{DATABASE_PATH}"  # Usa SQLite para pruebas
 # DATABASE_URL = "mysql+mysqlconnector://user:password@localhost:3306/database_name"  # Usa MySQL en producción
 
 # Crear la conexión a la base de datos
