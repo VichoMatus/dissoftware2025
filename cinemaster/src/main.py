@@ -4,6 +4,9 @@ from views.authentication.register_view import RegisterView
 from views.cartelera_view import MainView
 from views.trabajador_view import ClienteView
 from views.admin_view import AdminView
+from services.empleado_service import EmpleadoService
+from services.cliente_service import ClienteService
+from database import db_session  # Ajusta el import según tu estructura real
 
 
 def open_register_view():
@@ -24,7 +27,9 @@ def open_trabajador_view(employee_name):
     app.mainloop()
 
 def open_adimn_view():
-    app = AdminView()  # Cambia esto por la vista de administrador que tengas
+    empleado_service = EmpleadoService(db_session)
+    cliente_service = ClienteService(db_session)
+    app = AdminView(empleado_service, cliente_service)
     app.mainloop()
 
 if __name__ == "__main__":
