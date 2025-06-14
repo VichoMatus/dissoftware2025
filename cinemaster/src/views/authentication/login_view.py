@@ -48,7 +48,7 @@ class LoginView(ctk.CTk):
         self.login_button = ctk.CTkButton(self.login_frame, text="Login", command=self.login)
         self.login_button.pack(pady=20)
 
-        self.register_button = ctk.CTkButton(self.login_frame, text="¿No tienes una cuenta? Regístrate", command=self.open_register)
+        self.register_button = ctk.CTkButton(self.login_frame, text="¿No tienes una cuenta? Regístrate", command=self.open_register_view)
         self.register_button.pack(pady=5)
 
     def login(self):

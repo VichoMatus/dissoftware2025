@@ -1,43 +1,21 @@
 import customtkinter as ctk
-from views.authentication.login_view import LoginView
-from views.authentication.register_view import RegisterView
-from views.cartelera_view import MainView
-from views.trabajador_view import TrabajadorView
-from views.admin_view import AdminView
+from controllers.app_controller import AppController
+from api.main import start_api_in_thread
 
-# Importa los servicios
-from views.authentication.auth_service import AuthService
-from views.authentication.registration_service import RegistrationService
-
-# Instancia los servicios una sola vez
-auth_service = AuthService()
-registration_service = RegistrationService()
-
-def open_register_view():
-    app = RegisterView(registration_service, open_login_view)
-    app.mainloop()
-
-def open_login_view():
-    app = LoginView(
-        auth_service,
-        open_register_view,
-        open_cartelera_view,
-        open_trabajador_view,
-        open_admin_view
-    )
-    app.mainloop()
-
-def open_cartelera_view(cliente):
-    app = MainView(cliente)
-    app.mainloop()
-
-def open_trabajador_view(employee_name):
-    app = TrabajadorView(employee_name)
-    app.mainloop()
-
-def open_admin_view():
-    app = AdminView()
-    app.mainloop()
+def main():
+    ctk.set_appearance_mode("dark")
+    
+    # Iniciar la API en segundo plano
+    print("Iniciando CineMaster API en http://127.0.0.1:8000")
+    api_thread = start_api_in_thread()
+    print("API iniciada correctamente!")
+    print("Puedes acceder a:")
+    print("- API: http://127.0.0.1:8000")
+    print("- Documentación: http://127.0.0.1:8000/docs")
+    
+    # Iniciar la aplicación principal
+    app_controller = AppController()
+    app_controller.start()
 
 if __name__ == "__main__":
-    open_login_view()
+    main()
