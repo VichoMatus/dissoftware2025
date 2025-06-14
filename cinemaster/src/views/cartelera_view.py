@@ -10,6 +10,9 @@ from views.Cartelera_Solid.profile_button import ProfileButton
 from views.Cartelera_Solid.cartel_clasico import CartelClasico
 from services.booking_facade import BookingFacade
 
+# Importa el cartel clásico desde la nueva estructura OCP
+from views.Cartelera_Solid.cartel_clasico import CartelClasico
+
 class MainView(ctk.CTk):
     def __init__(self, cliente):
         super().__init__()
