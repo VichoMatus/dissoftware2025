@@ -1,21 +1,19 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from .login_handlers import ClienteLoginHandler, EmpleadoLoginHandler, AdminLoginHandler
-from models.database import SessionLocal
 from PIL import Image, ImageTk
-from utils.decorators import medir_tiempo
 import os
 
 class LoginView(ctk.CTk):
-    def __init__(self, open_register, open_cartelera, open_trabajador, open_admin):
+    def __init__(self, auth_service, open_register_view, open_cartelera_view, open_trabajador_view, open_admin_view):
         super().__init__()
         self.title("Login")
         self.geometry("1280x800")
 
-        self.open_register = open_register
-        self.open_cartelera = open_cartelera
-        self.open_trabajador = open_trabajador 
-        self.open_admin = open_admin
+        self.auth_service = auth_service
+        self.open_register_view = open_register_view
+        self.open_cartelera_view = open_cartelera_view
+        self.open_trabajador_view = open_trabajador_view 
+        self.open_admin_view = open_admin_view
 
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.pack(fill='x', padx=20, pady=10)
@@ -53,7 +51,6 @@ class LoginView(ctk.CTk):
         self.register_button = ctk.CTkButton(self.login_frame, text="¿No tienes una cuenta? Regístrate", command=self.open_register_view)
         self.register_button.pack(pady=5)
 
-    @medir_tiempo
     def login(self):
         email = self.email_entry.get()
         password = self.password_entry.get()
@@ -62,32 +59,23 @@ class LoginView(ctk.CTk):
             messagebox.showerror("Error", "El correo electrónico debe contener '@'.")
             return
 
-        db = SessionLocal()
+        result = self.auth_service.authenticate(email, password)
 
-        # Patron: Chain of Responsibility
-        handler_chain = ClienteLoginHandler(
-            EmpleadoLoginHandler(
-                AdminLoginHandler()
-            )
-        )
-
-        tipo_usuario, usuario = handler_chain.handle(db, email, password)
-
-        if tipo_usuario == "cliente":
-            messagebox.showinfo("Éxito", "Login como Cliente completado!")
-            self.destroy()
-            self.open_cartelera(usuario)
-
-        elif tipo_usuario == "empleado":
-            messagebox.showinfo("Éxito", "Login como Empleado completado")
-            self.destroy()
-            self.open_trabajador(usuario.Name)
-
-        elif tipo_usuario == "admin":
-            messagebox.showinfo("Éxito", "Login como Admin completado!")
-            self.destroy()
-            self.open_admin()
-
+        if result["success"]:
+            tipo_usuario = result["tipo_usuario"]
+            usuario = result["usuario"]
+            if tipo_usuario == "cliente":
+                messagebox.showinfo("Éxito", "Login como Cliente completado!")
+                self.destroy()
+                self.open_cartelera_view(usuario)
+            elif tipo_usuario == "empleado":
+                messagebox.showinfo("Éxito", "Login como Empleado completado")
+                self.destroy()
+                self.open_trabajador_view(usuario.Name)
+            elif tipo_usuario == "admin":
+                messagebox.showinfo("Éxito", "Login como Admin completado!")
+                self.destroy()
+                self.open_admin_view()
         else:
             messagebox.showerror("Error", "Email o contraseña incorrecta.")
             self.email_entry.delete(0, ctk.END)
@@ -95,8 +83,6 @@ class LoginView(ctk.CTk):
             self.email_entry.focus()
             self.password_entry.focus()
 
-        db.close()
-
-    def open_register_view(self):
-        self.open_register()
+    def open_register(self):
+        self.open_register_view()
         self.quit()
