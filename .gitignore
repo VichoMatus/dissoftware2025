@@ -25,7 +25,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
 # PyInstaller
 *.manifest
 *.spec
@@ -97,3 +96,21 @@ config.ini
 
 # FastAPI specific
 .pytest_cache/
+
+#pycache
+cinemaster/src/views/reservations/__pycache__
+cinemaster/src/views/__pycache__
+cinemaster/src/views/reservations/__pycache__
+cinemaster/src/views/Cartelera_Solid/__pycache__
+cinemaster/src/views/authentication/__pycache__
+cinemaster/src/views/__pycache__
+cinemaster/src/utils/__pycache__
+cinemaster/src/services/__pycache__
+cinemaster/src/models/__pycache__
+cinemaster/src/database/__pycache__
+cinemaster/src/controllers/__pycache__
+cinemaster/src/commands/__pycache__
+cinemaster/src/builders/__pycache__
+cinemaster/src/api/__pycache__
+cinemaster/src/__pycache__
+*.pyc
