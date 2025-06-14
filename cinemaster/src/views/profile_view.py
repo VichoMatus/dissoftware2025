@@ -6,6 +6,7 @@ from models.database import Reserva_asientos, SessionLocal
 from tkinter import simpledialog
 from PIL import Image, ImageTk  # Para el logo
 import os
+from services.cliente_services import ClienteService
 
 
 class ProfileView(ctk.CTk):
@@ -141,7 +142,7 @@ class ProfileView(ctk.CTk):
 
         with SessionLocal() as db:
             cliente_actual = self.cliente
-            reservas = cliente_actual.obtener_reservas_actuales()
+            reservas = ClienteService.obtener_reservas_actuales(cliente_actual)
 
             for reserva in reservas:
                 # Consultar asientos relacionados a esta reserva
@@ -180,7 +181,8 @@ class ProfileView(ctk.CTk):
         self.tree_historial.pack(fill="both", expand=True)
 
         with SessionLocal() as db:
-            reservas_historial = self.cliente.obtener_historial_reservas()
+            reservas_historial = ClienteService.obtener_historial_reservas(self.cliente)
+            reservas_actuales = ClienteService.obtener_reservas_actuales(self.cliente)
 
             for reserva in reservas_historial:
                 asientos_obj = db.query(Reserva_asientos).filter(Reserva_asientos.reservation_id == reserva.reservation_id).all()
