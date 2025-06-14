@@ -28,19 +28,22 @@ class ProfileButton(ctk.CTkButton):
         
         :return: Imagen cargada y redimensionada para el botón.
         """
+        # Ruta absoluta a la carpeta de imágenes
+        images_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images"))
+        profile_image_path = os.path.join(images_dir, "perfil.png")
+        default_image_path = os.path.join(images_dir, "default.png")
         try:
-            current_dir = os.path.dirname(__file__)  # Directorio actual
-            # Usar la carpeta views/images para las imágenes
-            profile_image_path = os.path.join(current_dir, "../views/images", "perfil.png")  # Ruta relativa
-            profile_img = Image.open(profile_image_path)
-            profile_img = profile_img.resize((35, 35))  # Redimensionar la imagen
-            return ImageTk.PhotoImage(profile_img)
-        except FileNotFoundError:
-            print(f"Imagen de perfil no encontrada, utilizando la imagen predeterminada.")
-            # Si no se encuentra la imagen de perfil, carga una imagen por defecto
-            default_img = Image.open(os.path.join(os.path.dirname(__file__), "../views/images", "default.png"))
-            default_img = default_img.resize((35, 35))
-            return ImageTk.PhotoImage(default_img)
+            if os.path.exists(profile_image_path):
+                profile_img = Image.open(profile_image_path)
+            else:
+                print("Imagen de perfil no encontrada, utilizando la imagen predeterminada.")
+                profile_img = Image.open(default_image_path)
+        except Exception:
+            # Si tampoco existe default.png, crea una imagen vacía
+            print("Imagen predeterminada no encontrada, usando imagen gris.")
+            profile_img = Image.new("RGB", (35, 35), color="gray")
+        profile_img = profile_img.resize((35, 35))
+        return ImageTk.PhotoImage(profile_img)
 
     def redirect_to_profile(self):
         """

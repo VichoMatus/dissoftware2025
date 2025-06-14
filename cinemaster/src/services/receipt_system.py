@@ -1,4 +1,4 @@
-from src.database.db_connection import get_reservation_details
+from database.db_connection import get_reservation_details
 
 class ReceiptSystem:
     def generar_boleta(self, movie_name, showtime_string, seat, imagen, cliente_nombre):

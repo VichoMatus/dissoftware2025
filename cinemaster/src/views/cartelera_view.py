@@ -6,10 +6,9 @@ from models.movie import get_all_movies
 from models.database import get_db
 from models.cliente import Cliente
 from views.reservations.reservation_view import open_reservation_view
-from models.profile_button import ProfileButton
-
-# Importa el cartel clásico desde la nueva estructura OCP
+from views.Cartelera_Solid.profile_button import ProfileButton
 from views.Cartelera_Solid.cartel_clasico import CartelClasico
+from services.booking_facade import BookingFacade
 
 class MainView(ctk.CTk):
     def __init__(self, cliente):
@@ -53,7 +52,8 @@ class MainView(ctk.CTk):
             self.carteles.append(cartel)
 
     def reserve_movie(self, pelicula, showtimes_with_ids, cliente):
+        reservation_system = BookingFacade()  # Instancia del sistema de reservas
         self.destroy()
         open_reservation_view(
-            pelicula.Title, pelicula.Duration, pelicula.Gender, pelicula.Image_path, showtimes_with_ids, cliente
+            pelicula.Title, pelicula.Duration, pelicula.Gender, pelicula.Image_path, showtimes_with_ids, cliente, reservation_system
         )
