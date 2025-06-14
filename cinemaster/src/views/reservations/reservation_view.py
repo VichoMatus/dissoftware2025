@@ -1,177 +1,98 @@
 import customtkinter as ctk
-import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
-import sys
 import os
-# Agregar el directorio de la aplicación para que pueda encontrar los módulos correctamente
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from models.cliente import Cliente  # Importar Cliente desde models.cliente para usar la clase correcta
-from models.movie import get_all_movies
-from models.database import get_db
-from views.reservations.seat_selection import *
-from src.utils.decorators import medir_tiempo
-# Importa tus controladores reales aquí
-
-from services.booking_facade import BookingFacade
-
+from utils.decorators import medir_tiempo
+from views.Cartelera_Solid.profile_button import ProfileButton
+from controllers.reservation_controller import ReservationController
 
 class ReservationView(ctk.CTkToplevel):
-    def __init__(self, selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, cliente):
+    def __init__(self, selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, cliente, reservation_system):
         super().__init__()
 
         self.title("Cine Master")
-        self.geometry("1280x720")  # Ajustar el tamaño de la ventana
-        self.resizable(True, True)  # Permitir que la ventana sea redimensionable
-
-        # Configurar el modo oscuro
+        self.geometry("1280x720")
+        self.resizable(True, True)
         ctk.set_appearance_mode("dark")
 
-        # Guardamos el cliente logueado (debe ser instancia de models.cliente.Cliente)
         self.cliente = cliente
-
-        # Obtener la película desde la base de datos usando el ID
         self.selected_movie_Title = selected_movie_Title
         self.selected_movie_Duration = selected_movie_Duration
         self.selected_movie_Gender = selected_movie_Gender
         self.movie_image_path = movie_image_path
         self.showtimes_with_ids = showtimes_with_ids
 
-        self.booking_facade = BookingFacade()
-        
-        # Crear los dos frames
+        self.controller = ReservationController(reservation_system)
+
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.pack(fill='x', padx=20, pady=10)
 
-        # Crear un frame principal que contendrá toda la interfaz
         self.reservation_frame = ctk.CTkFrame(self)
         self.reservation_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        # Crear los widgets dentro de este frame
         self.create_widgets()
-    @medir_tiempo
-    def create_widgets(self):
 
+    def load_movie_image(self):
+        """Carga y devuelve la imagen de la película redimensionada."""
+        image_path = self.movie_image_path if self.movie_image_path and os.path.exists(self.movie_image_path) \
+            else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images", "default.jpg"))
+        pil_image = Image.open(image_path)
+        pil_image = pil_image.resize((200, 200))
+        return ImageTk.PhotoImage(pil_image)
 
-
-        # Frame para el header
-        current_dir = os.path.dirname(__file__)  # Obtiene el directorio actual
-        logo_path = os.path.join(current_dir, "..", "images", "logo.png")  # Ruta correcta
-
-        self.logo_image = Image.open(logo_path)  # Ajustamos la ruta aquí
-        self.logo_image = self.logo_image.resize((100, 100))  # Redimensionar si es necesario
-        self.logo_photo = ImageTk.PhotoImage(self.logo_image)
-        
-        self.logo_label = ctk.CTkLabel(self.header_frame, image=self.logo_photo, text="")  # Corregido para evitar texto
-        self.logo_label.pack(side="left", padx=10)
-
-        self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
-        self.app_name_label.pack(side="left", padx=10)
-
-        # Agregar botón con el nombre del cliente logueado
-        try:
-            # Cargar la imagen de perfil
-            profile_img = Image.open("cinemaster/src/views/images/perfil.png")  # Asegúrate de tener la imagen aquí
-            profile_img = profile_img.resize((35, 35))  # Ajustamos el tamaño
-            profile_img = ImageTk.PhotoImage(profile_img)
-        except:
-            profile_img = ImageTk.PhotoImage(Image.open("cinemaster/src/views/images/default.png").resize((35, 35)))  # Si no se encuentra la imagen, usar una predeterminada
-
-        # Botón de perfil con imagen y texto
-        self.profile_button = ctk.CTkButton(self.header_frame, text=self.cliente.nombre, font=("Arial", 14),
-                                            image=profile_img, compound="left", command=self.redirect_to_profile)
-        self.profile_button.image = profile_img  # Mantener la referencia de la imagen
-        self.profile_button.pack(side="right", padx=10)
-
-        # Cargar y mostrar la imagen de la película
-        self.load_movie_image(self.movie_image_path)
-
-        # Detalles de la película (alineados al borde de la pantalla)
-        self.movie_title_label = ctk.CTkLabel(self.reservation_frame, text=f"Nombre de la película: {self.selected_movie_Title}")
-        self.movie_title_label.grid(row=1, column=1, padx=20, pady=10, sticky="w", columnspan=3)
-
-        self.movie_duration_label = ctk.CTkLabel(self.reservation_frame, text=f"Duración: {self.selected_movie_Duration} min")
-        self.movie_duration_label.grid(row=2, column=1, padx=20, pady=10, sticky="w", columnspan=3)
-
-        self.movie_genre_label = ctk.CTkLabel(self.reservation_frame, text=f"Género: {self.selected_movie_Gender}")
-        self.movie_genre_label.grid(row=3, column=1, padx=20, pady=10, sticky="w", columnspan=3)
-
-        # Mostrar el dropdown de horarios
-        self.showtimes_label = ctk.CTkLabel(self.reservation_frame, text="Horarios disponibles:")
-        self.showtimes_label.grid(row=1, column=9, padx=20, pady=10, sticky="w", columnspan=3)
-
-        # Convertir las tuplas (id, fecha) a una lista de cadenas legibles
-        self.showtimes_strings = [f"{showtime[1].strftime('%Y-%m-%d %H:%M')} - ID: {showtime[0]}" for showtime in self.showtimes_with_ids]
-
-        # Dropdown (OptionMenu) para seleccionar el horario
-        self.selected_showtime = ctk.StringVar(value=self.showtimes_strings[0])  # Valor por defecto
-        self.showtime_dropdown = ctk.CTkOptionMenu(self.reservation_frame, variable=self.selected_showtime, values=self.showtimes_strings)
-        self.showtime_dropdown.grid(row=2, column=9, padx=20, pady=10, sticky="w", columnspan=3)
-
-
-        # Botón para agendar reserva (alineado a la izquierda, ajustado al tamaño de la pantalla)
-        self.reserve_button = ctk.CTkButton(self.reservation_frame, text="Agendar reserva", width=200, height=40, command=self.reserve_movie)
-        self.reserve_button.grid(row=5, column=6, padx=20, pady=20, columnspan=3, sticky="w")
-
-    def load_movie_image(self, image_path):
-        #Asegurarnos de que la ruta de la imagen sea valida
-        try:
-            # Cargar y redimensionar la imagen
-            movie_image = Image.open(image_path)
-            movie_image = movie_image.resize((500, 400))  # Redimensionar la imagen a 500x400
-            movie_image_tk = ImageTk.PhotoImage(movie_image)
-
-            # Crear un widget CTkLabel con la imagen
-            self.movie_image_label = ctk.CTkLabel(self.reservation_frame, image=movie_image_tk, text="")
-            self.movie_image_label.grid(row=1, column=0, padx=0, pady=20, rowspan=3, sticky="n")
-
-            # Mantener una referencia de la imagen para evitar que se pierda
-            self.movie_image_label.image = movie_image_tk
-
-        except Exception as e:
-            print(f"Error al cargar la imagen: {e}")
-    
-    def redirect_to_profile(self):
-        """Función para redirigir al perfil del cliente cuando hace clic en el botón"""
-        print("Tipo de self.cliente en redirect_to_profile:", type(self.cliente))
-        print("Métodos disponibles en self.cliente:", dir(self.cliente))
-
-        self.destroy()  # Cierra la ventana actual
-        from views.profile_view import ProfileView  # Importamos la vista del perfil
-        profile_view = ProfileView(self.cliente)  # Pasamos el cliente logueado
-        profile_view.mainloop()  # Iniciamos la ventana del perfil
-    
-    def reserve_movie(self):
+    def get_selected_showtime(self):
+        """Devuelve el ID y la fecha del horario seleccionado."""
         selected_showtime_string = self.selected_showtime.get()
-
-        # Verificar que haya un valor seleccionado
-        if not selected_showtime_string:
-            messagebox.showerror("Error", "No se ha seleccionado un horario válido.")
-            return
-
-        # Extraemos el ID y la fecha del showtime seleccionado
-        selected_showtime_id = None
-        selected_showtime_date = None
-    
         for showtime in self.showtimes_with_ids:
             showtime_string = f"{showtime[1].strftime('%Y-%m-%d %H:%M')} - ID: {showtime[0]}"
             if selected_showtime_string == showtime_string:
-                selected_showtime_id = showtime[0]
-                selected_showtime_date = showtime[1]
-                break
+                return showtime[0], showtime[1]
+        return None, None
 
+    @medir_tiempo
+    def create_widgets(self):
+        # Header
+        self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
+        self.app_name_label.pack(side="left", padx=10)
+        self.profile_button = ProfileButton(self.header_frame, self.cliente)
+
+        # Imagen de la película
+        self.img = self.load_movie_image()
+        image_label = ctk.CTkLabel(self.reservation_frame, image=self.img, text="")
+        image_label.image = self.img
+        image_label.grid(row=0, column=0, padx=20, pady=20, rowspan=4)
+
+        # Info de la película
+        info_label = ctk.CTkLabel(
+            self.reservation_frame,
+            text=f"Título: {self.selected_movie_Title}\nGénero: {self.selected_movie_Gender}\nDuración: {self.selected_movie_Duration} min",
+            font=("Arial", 14),
+            justify="left"
+        )
+        info_label.grid(row=0, column=1, padx=20, pady=10, sticky="w")
+
+        # Selección de horario
+        self.showtimes_label = ctk.CTkLabel(self.reservation_frame, text="Horarios disponibles:")
+        self.showtimes_label.grid(row=1, column=1, padx=20, pady=10, sticky="w")
+
+        self.showtimes_strings = [f"{showtime[1].strftime('%Y-%m-%d %H:%M')} - ID: {showtime[0]}" for showtime in self.showtimes_with_ids]
+        self.selected_showtime = ctk.StringVar(value=self.showtimes_strings[0])
+        self.showtime_dropdown = ctk.CTkOptionMenu(self.reservation_frame, variable=self.selected_showtime, values=self.showtimes_strings)
+        self.showtime_dropdown.grid(row=2, column=1, padx=20, pady=10, sticky="w")
+
+        self.reserve_button = ctk.CTkButton(self.reservation_frame, text="Continuar a selección de asiento", width=200, height=40, command=self.reserve_movie)
+        self.reserve_button.grid(row=3, column=1, padx=20, pady=20, sticky="w")
+
+    def reserve_movie(self):
+        selected_showtime_id, selected_showtime_date = self.get_selected_showtime()
         if selected_showtime_id is None:
             messagebox.showerror("Error", "No se ha seleccionado un horario válido.")
             return
 
-        messagebox.showinfo("Reserva Confirmada", f"Reserva realizada para la película: {self.selected_movie_Title}\nHorario: {selected_showtime_string}")
-
-        # Destruir la ventana de reserva (cerrar la ventana actual)
+        messagebox.showinfo("Reserva", f"Selecciona tu asiento para la película: {self.selected_movie_Title}\nHorario: {selected_showtime_date.strftime('%Y-%m-%d %H:%M')}")
         self.destroy()
-        # Llama a la vista de selección de asientos PASANDO LOS CONTROLADORES
-        open_seat_selection_view(selected_showtime_id, selected_showtime_date, self.selected_movie_Title, self.movie_image_path, self.cliente, self.booking_facade)
+        from views.reservations.seat_selection import open_seat_selection_view
+        open_seat_selection_view(selected_showtime_id, selected_showtime_date, self.selected_movie_Title, self.movie_image_path, self.cliente, self.controller.reservation_system)
 
-
-# Ejecutar la aplicación
-def open_reservation_view(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids,cliente):
-    ReservationView(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids,cliente)
+def open_reservation_view(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, cliente, reservation_system):
+    ReservationView(selected_movie_Title, selected_movie_Duration, selected_movie_Gender, movie_image_path, showtimes_with_ids, cliente, reservation_system)

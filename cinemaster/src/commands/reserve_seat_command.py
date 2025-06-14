@@ -1,7 +1,7 @@
 from models.database import Reserva, get_db, Reserva_asientos, HorarioAsientos
 from sqlalchemy.orm import Session
 import uuid
-from src.utils.decorators import medir_tiempo
+from utils.decorators import medir_tiempo
 from models.seat import Seat
 
 class ReserveSeatCommand:
