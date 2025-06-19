@@ -1,7 +1,7 @@
 from views.authentication.login_view import LoginView
 from views.authentication.register_view import RegisterView
 from views.cartelera_view import MainView
-from views.trabajador_view import ClienteView
+from views.trabajador_view import TrabajadorView
 from views.admin_view import AdminView
 from views.authentication.auth_service import AuthService
 from views.authentication.registration_service import RegistrationService
@@ -32,7 +32,7 @@ class AppController:
         app.mainloop()
 
     def open_trabajador_view(self, employee_name):
-        app = ClienteView(employee_name)
+        app = TrabajadorView(employee_name)
         app.mainloop()
 
     def open_admin_view(self):
