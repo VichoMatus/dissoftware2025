@@ -50,6 +50,7 @@ def main():
     ctk.set_appearance_mode("dark")
     
     print("🎬 Iniciando CineMaster...")
+    print("🏗️  Arquitectura: Aplicación → API → Base de Datos")
     print("=" * 50)
     
     # Iniciar la API en segundo plano
