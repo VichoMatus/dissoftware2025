@@ -4,7 +4,6 @@ import time
 import threading
 import socket
 from controllers.app_controller import AppController
-from api.main import start_api_in_thread
 
 def check_api_port():
     """Verifica si el puerto de la API está disponible"""
@@ -20,16 +19,17 @@ def check_api_port():
 def start_api():
     """Inicia la API importando y ejecutando su función principal"""
     try:
-        from api.main import start_api_with_browser
+        from api.main import start_api_in_thread
         print("🚀 Iniciando API CineMaster...")
-        start_api_with_browser()
+        start_api_in_thread()  # Solo iniciar la API, sin abrir navegador
     except Exception as e:
         print(f"❌ Error al iniciar la API: {e}")
 
 def open_browser_after_delay():
     """Abre el navegador después de verificar que la API esté lista"""
     print("🔍 Verificando estado de la API...")
-      # Esperar a que la API esté disponible
+    
+    # Esperar a que la API esté disponible
     max_attempts = 15
     for attempt in range(max_attempts):
         if check_api_port():
