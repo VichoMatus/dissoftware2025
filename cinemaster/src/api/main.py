@@ -7,13 +7,13 @@ import time
 
 # Importar routers
 try:
-    from .routers import login, auth
+    from .routers import login, auth, dashboard
 except ImportError:
     # Fallback para importación absoluta cuando se ejecuta directamente
     import sys
     import os
     sys.path.append(os.path.dirname(__file__))
-    from routers import login, auth
+    from routers import login, auth, dashboard
 
 # Crear la instancia de FastAPI
 app = FastAPI(
@@ -25,6 +25,7 @@ app = FastAPI(
 # Incluir routers
 app.include_router(login.router)
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 
 @app.get("/")
 async def root():

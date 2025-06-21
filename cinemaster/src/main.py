@@ -29,8 +29,7 @@ def start_api():
 def open_browser_after_delay():
     """Abre el navegador después de verificar que la API esté lista"""
     print("🔍 Verificando estado de la API...")
-    
-    # Esperar a que la API esté disponible
+      # Esperar a que la API esté disponible
     max_attempts = 15
     for attempt in range(max_attempts):
         if check_api_port():
@@ -42,6 +41,11 @@ def open_browser_after_delay():
     try:
         webbrowser.open('http://127.0.0.1:8000/login/')
         print("🌐 Navegador abierto en: http://127.0.0.1:8000/login/")
+        
+        # Abrir el dashboard también en una nueva pestaña
+        time.sleep(1)
+        webbrowser.open('http://127.0.0.1:8000/dashboard/')
+        print("📊 Dashboard abierto en: http://127.0.0.1:8000/dashboard/")
     except Exception as e:
         print(f"❌ Error al abrir el navegador: {e}")
         print("💡 Puedes abrir manualmente: http://127.0.0.1:8000/login/")

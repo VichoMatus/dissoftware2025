@@ -3,9 +3,7 @@ from views.authentication.register_view import RegisterView
 from views.cartelera_view import MainView
 from views.trabajador_view import ClienteView
 from views.admin_view import AdminView
-from api.services.api_auth_service import ApiAuthService
-from api.services.api_registration_service import ApiRegistrationService
-from api.services.interfaces import AuthServiceInterface, RegistrationServiceInterface
+from api.services.register_login import ApiAuthService, ApiRegistrationService, AuthServiceInterface, RegistrationServiceInterface, DashboardLogger
 
 class AppController:
     """
@@ -32,6 +30,7 @@ class AppController:
         # DIP: Usar servicios inyectados o crear por defecto
         self._auth_service = auth_service or ApiAuthService()
         self._registration_service = registration_service or ApiRegistrationService()
+        self._dashboard_logger = DashboardLogger()
         
         # Verificar conexión con la API al inicializar
         self._check_api_connectivity()
@@ -67,7 +66,20 @@ class AppController:
         Abre la vista de cartelera para clientes
         SRP: Responsabilidad específica de navegación
         """
-        app = MainView(cliente)
+        # Establecer cliente en el dashboard de la API
+        try:
+            self._dashboard_logger.set_current_client(
+                cliente.nombre, 
+                cliente.cliente_id, 
+                cliente.Email
+            )
+            # Registrar que está viendo la cartelera
+            self._dashboard_logger.log_cartelera_view()
+        except Exception as e:
+            print(f"No se pudo establecer cliente en dashboard: {e}")
+        
+        # Crear vista de cartelera con logger
+        app = MainView(cliente, self._dashboard_logger)
         app.mainloop()
     
     def open_trabajador_view(self, employee_name):
@@ -95,41 +107,3 @@ class AppController:
             print("⚠️  Advertencia: No se pudo conectar con la API.")
             print("   Asegúrate de que la API esté ejecutándose en http://127.0.0.1:8000")
             print("   Algunas funciones pueden no funcionar correctamente.")
-    
-    def start(self):
-        """Inicia la aplicación mostrando la vista de login"""
-        self.open_login_view()
-
-    def open_register_view(self):
-        """
-        Abre la vista de registro
-        SRP: Responsabilidad específica de navegación
-        """
-        app = RegisterView(self._registration_service, self.open_login_view)
-        app.mainloop()
-
-    def open_login_view(self):
-        """
-        Abre la vista de login
-        SRP: Responsabilidad específica de navegación
-        """
-        app = LoginView(
-            self._auth_service,
-            self.open_register_view,
-            self.open_cartelera_view,
-            self.open_trabajador_view,
-            self.open_admin_view
-        )
-        app.mainloop()
-
-    def open_cartelera_view(self, cliente):
-        app = MainView(cliente)
-        app.mainloop()
-
-    def open_trabajador_view(self, employee_name):
-        app = ClienteView(employee_name)
-        app.mainloop()
-
-    def open_admin_view(self):
-        app = AdminView()
-        app.mainloop()

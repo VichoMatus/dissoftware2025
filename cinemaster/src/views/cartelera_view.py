@@ -14,7 +14,7 @@ from services.booking_facade import BookingFacade
 from views.Cartelera_Solid.cartel_clasico import CartelClasico
 
 class MainView(ctk.CTk):
-    def __init__(self, cliente):
+    def __init__(self, cliente, dashboard_logger=None):
         super().__init__()
 
         self.title("Cine Management")
@@ -22,6 +22,7 @@ class MainView(ctk.CTk):
         ctk.set_appearance_mode("dark")
 
         self.cliente = cliente
+        self.dashboard_logger = dashboard_logger
 
         # Header
         self.header_frame = ctk.CTkFrame(self)
@@ -39,12 +40,10 @@ class MainView(ctk.CTk):
         self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
         self.app_name_label.pack(side="left", padx=10)
 
-        self.profile_button = ProfileButton(self.header_frame, self.cliente)
-
-        # Cartelera
+        self.profile_button = ProfileButton(self.header_frame, self.cliente)        # Cartelera
         self.cartelera_frame = ctk.CTkFrame(self, corner_radius=10)
         self.cartelera_frame.pack(fill='both', expand=True, padx=20, pady=10)
-
+        
         self.db_session = next(get_db())
         peliculas = get_all_movies(self.db_session)
 
@@ -55,6 +54,13 @@ class MainView(ctk.CTk):
             self.carteles.append(cartel)
 
     def reserve_movie(self, pelicula, showtimes_with_ids, cliente):
+        # Registrar selección de película en el dashboard
+        if self.dashboard_logger:
+            self.dashboard_logger.log_movie_selection(
+                pelicula.Title, 
+                getattr(pelicula, 'movie_id', None)
+            )
+        
         reservation_system = BookingFacade()  # Instancia del sistema de reservas
         self.destroy()
         open_reservation_view(
