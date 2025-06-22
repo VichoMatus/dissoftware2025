@@ -6,7 +6,7 @@ class SidebarMenu(ctk.CTkFrame):
 
         self.buttons = {
             "Clientes": lambda: on_tab_selected("Clientes"),
-            "Películas": lambda: on_tab_selected("Peliculas"),
+            "Películas": lambda: on_tab_selected("Películas"),
             "Funciones": lambda: on_tab_selected("Funciones"),
             "Reservas": lambda: on_tab_selected("Reservas"),
             "Promociones": lambda: on_tab_selected("Promociones"),

@@ -1,22 +1,39 @@
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk
+from models.database import SessionLocal
 
 class ClientesTab(ctk.CTkFrame):
     def __init__(self, parent, cliente_service):
         super().__init__(parent)
         self.cliente_service = cliente_service
 
-        ctk.CTkLabel(self, text="Listado de Clientes", font=("Arial", 16, "bold")).pack(pady=10)
+        self.label = ctk.CTkLabel(self, text="Lista de Clientes", font=("Arial", 20))
+        self.label.pack(pady=10)
 
-        columns = ("ID", "Nombre", "Email", "Membresía")
-        self.tree = ttk.Treeview(self, columns=columns, show="headings", selectmode="browse", height=8)
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
-        self.tree.pack(padx=10, pady=5, fill="x")
+        self.tree = ttk.Treeview(self, columns=("ID", "Nombre", "Correo", "Membresía"), show="headings")
+        self.tree.heading("ID", text="ID")
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Correo", text="Correo")
+        self.tree.heading("Membresía", text="Membresía")
+        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        action_frame = ctk.CTkFrame(self)
-        action_frame.pack(pady=10)
-        ctk.CTkButton(action_frame, text="Agregar Cliente").pack(side="left", padx=10)
-        ctk.CTkButton(action_frame, text="Actualizar Datos").pack(side="left", padx=10)
-        ctk.CTkButton(action_frame, text="Eliminar Seleccionado", fg_color="red", hover_color="#b71c1c").pack(side="left", padx=10)
+        self.reload_button = ctk.CTkButton(self, text="Cargar Clientes", command=self.cargar_datos)
+        self.reload_button.pack(pady=5)
+
+        self.cargar_datos()
+
+    def cargar_datos(self):
+        db = SessionLocal()
+        try:
+            clientes = self.cliente_service.listar_clientes(db)
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            for cliente in clientes:
+                self.tree.insert("", "end", values=(
+                    cliente.cliente_id,
+                    cliente.nombre,
+                    cliente.Email,
+                    "Sí" if cliente.Membership else "No"
+                ))
+        finally:
+            db.close()
