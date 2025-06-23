@@ -1,9 +1,9 @@
-
 from fastapi import FastAPI
 import uvicorn
 import threading
 import webbrowser
 import time
+from .routers import reservas
 
 # Importar routers
 try:
@@ -26,7 +26,7 @@ app = FastAPI(
 app.include_router(login.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
-
+app.include_router(reservas.router)
 @app.get("/")
 async def root():
     return {"message": "CineMaster API v1.0.0 está funcionando!"}
