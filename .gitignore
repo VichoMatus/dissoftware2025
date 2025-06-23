@@ -114,3 +114,4 @@ cinemaster/src/commands/__pycache__
 cinemaster/src/builders/__pycache__
 cinemaster/src/api/__pycache__
 cinemaster/src/__pycache__
+*.pyc
