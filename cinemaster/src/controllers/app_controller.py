@@ -1,7 +1,7 @@
 from views.authentication.login_view import LoginView
 from views.authentication.register_view import RegisterView
 from views.cartelera_view import MainView
-from views.trabajador_view import ClienteView
+from views.trabajador_view import TrabajadorView
 from views.admin_view import AdminView
 from api.services.register_login import ApiAuthService, ApiRegistrationService, AuthServiceInterface, RegistrationServiceInterface, DashboardLogger
 
@@ -83,11 +83,7 @@ class AppController:
         app.mainloop()
     
     def open_trabajador_view(self, employee_name):
-        """
-        Abre la vista de trabajador/empleado
-        SRP: Responsabilidad específica de navegación
-        """
-        app = ClienteView(employee_name)
+        app = TrabajadorView(employee_name)
         app.mainloop()
     
     def open_admin_view(self):
