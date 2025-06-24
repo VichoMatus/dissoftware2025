@@ -4,6 +4,11 @@ import uvicorn
 import threading
 import webbrowser
 import time
+from api.trabajador_api.clientes_api import router as clientes_router
+from api.trabajador_api.peliculas_api import router as peliculas_router
+from api.trabajador_api.reservas_api import router as reservas_router
+from api.trabajador_api.funciones_api import router as funciones_router
+from api.trabajador_api.promociones_api import router as promociones_router
 
 # Importar routers
 try:
@@ -26,6 +31,14 @@ app = FastAPI(
 app.include_router(login.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
+
+app.include_router(clientes_router)
+app.include_router(peliculas_router)
+app.include_router(reservas_router)
+app.include_router(funciones_router)
+app.include_router(promociones_router)
+
+
 
 @app.get("/")
 async def root():
