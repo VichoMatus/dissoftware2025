@@ -25,6 +25,7 @@ def start_api():
     except Exception as e:
         print(f"❌ Error al iniciar la API: {e}")
 
+
 def open_browser_after_delay():
     """Abre el navegador después de verificar que la API esté lista"""
     print("🔍 Verificando estado de la API...")
@@ -42,10 +43,15 @@ def open_browser_after_delay():
         webbrowser.open('http://127.0.0.1:8000/login/')
         print("🌐 Navegador abierto en: http://127.0.0.1:8000/login/")
         
-        # Abrir el dashboard también en una nueva pestaña
+        # Abrir el dashboard del cliente
         time.sleep(1)
         webbrowser.open('http://127.0.0.1:8000/dashboard/')
         print("📊 Dashboard abierto en: http://127.0.0.1:8000/dashboard/")
+        
+        # Abrir el dashboard del trabajador
+        time.sleep(1)
+        webbrowser.open('http://127.0.0.1:8000/trabajador-dashboard/')
+        print("🛠️ Dashboard Trabajador abierto en: http://127.0.0.1:8000/trabajador-dashboard/")
     except Exception as e:
         print(f"❌ Error al abrir el navegador: {e}")
         print("💡 Puedes abrir manualmente: http://127.0.0.1:8000/login/")

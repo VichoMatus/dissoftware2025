@@ -71,7 +71,7 @@ class LoginView(ctk.CTk):
             elif tipo_usuario == "empleado":
                 messagebox.showinfo("Éxito", "Login como Empleado completado")
                 self.destroy()
-                self.open_trabajador_view(usuario.Name)
+                self.open_trabajador_view(usuario)
             elif tipo_usuario == "admin":
                 messagebox.showinfo("Éxito", "Login como Admin completado!")
                 self.destroy()
