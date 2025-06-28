@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 import uvicorn
 import threading
@@ -12,13 +11,17 @@ from api.trabajador_api.promociones_api import router as promociones_router
 
 # Importar routers
 try:
-    from .routers import login, auth, dashboard
+    # ---- MODIFICACIÓN AQUÍ ----
+    from .routers import login, auth, dashboard, api_profile_router # [NUEVO] Se añade el router del perfil
+    from .routers import api_admin_router # [ADMIN] Se añade el router del admin
 except ImportError:
     # Fallback para importación absoluta cuando se ejecuta directamente
     import sys
     import os
     sys.path.append(os.path.dirname(__file__))
-    from routers import login, auth, dashboard
+    # ---- MODIFICACIÓN AQUÍ ----
+    from routers import login, auth, dashboard, api_profile_router # [NUEVO] Se añade el router del perfil
+    from routers import api_admin_router # [ADMIN] Se añade el router del admin
 
 # Crear la instancia de FastAPI
 app = FastAPI(
@@ -38,6 +41,9 @@ app.include_router(reservas_router)
 app.include_router(funciones_router)
 app.include_router(promociones_router)
 
+# ---- MODIFICACIÓN AQUÍ ----
+app.include_router(api_profile_router.router) # [NUEVO] Se registra el router para que las rutas /profile/... funcionen
+app.include_router(api_admin_router.router)   # [ADMIN] Se registra el router para que las rutas /admin/... funcionen
 
 
 @app.get("/")
@@ -76,8 +82,8 @@ def start_api_with_browser():
 
 if __name__ == "__main__":
     # Si se ejecuta directamente, iniciar la API y abrir navegador
-    print("� Iniciando CineMaster API...")
-    print("� La página de bienvenida se abrirá automáticamente en tu navegador")
+    print(" Iniciando CineMaster API...")
+    print(" La página de bienvenida se abrirá automáticamente en tu navegador")
     start_api_with_browser()
     
     # Mantener el programa principal ejecutándose
