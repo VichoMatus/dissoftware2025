@@ -228,6 +228,7 @@ async def get_dashboard():
         """
     
     html_content += """
+            <button class="refresh-btn" onclick="window.location.href='/cartelera/'">🎞️ Ver Cartelera</button>
             <button class="refresh-btn" onclick="location.reload()">🔄 Actualizar</button>
         </div>
     </body>

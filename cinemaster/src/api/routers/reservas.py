@@ -5,7 +5,7 @@ from commands.reserve_seat_command import ReserveSeatCommand
 from services.email_observer import EmailSenderObserver
 from datetime import datetime
 
-from models.database import Asiento, Funcion, get_db, Reserva_asientos, HorarioAsientos
+from models.database import Asiento, Funcion, get_db, Reserva_asientos, HorarioAsientos, Reserva
 
 router = APIRouter()
 reservation_history = []
@@ -212,15 +212,18 @@ async def confirmar_pago_web(request: Request):
             reserva = reserve_command.execute()
 
             # Recarga la reserva con join para traer la relación client
-            reserva = db.query(Reserva_asientos).join(Reserva_asientos.reserva).join("reserva", "client").filter(
-                Reserva_asientos.reservationseat_id == reserva.reservationseat_id
-            ).first()
+            reserva = db.query(Reserva_asientos).join(Reserva_asientos.reserva).join(Reserva.client).filter(
+                    Reserva_asientos.reservationseat_id == reserva.reservationseat_id).first()
 
             receipt_controller = ReceiptController()
             receipt_controller.generar_boleta(movie_name, showtime_string, seat_id, imagen, cliente_nombre)
             receipt_controller.confirmar_boleta()
             email_sender = EmailSenderObserver()
-            email_sender.update(reserva)
+            if cliente_email:
+                email_sender.send_email(cliente_email, cliente_nombre, movie_name, "Gracias por su compra. Adjuntamos su boleta.")
+                print(f"📤 Correo enviado a {cliente_email}")
+            else:
+                print("❌ No se encontró el email del cliente.")
             reservation_history.append({
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "cliente": cliente_nombre,
