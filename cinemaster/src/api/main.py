@@ -7,7 +7,6 @@ from api.trabajador_api.clientes_api import router as clientes_router
 from api.trabajador_api.peliculas_api import router as peliculas_router
 from api.trabajador_api.reservas_api import router as reservas_router
 from api.trabajador_api.funciones_api import router as funciones_router
-from api.trabajador_api.promociones_api import router as promociones_router
 from api.routers import cartelera
 from api.routers import reservas
 
