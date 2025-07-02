@@ -1,13 +1,11 @@
 import customtkinter as ctk
-import webbrowser
-import time
 import threading
-import socket
 from controllers.app_controller import AppController
 
 def check_api_port():
     """Verifica si el puerto de la API está disponible"""
     try:
+        import socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         result = sock.connect_ex(('127.0.0.1', 8000))
@@ -25,36 +23,7 @@ def start_api():
     except Exception as e:
         print(f"❌ Error al iniciar la API: {e}")
 
-
-def open_browser_after_delay():
-    """Abre el navegador después de verificar que la API esté lista"""
-    print("🔍 Verificando estado de la API...")
-    
-    # Esperar a que la API esté disponible
-    max_attempts = 15
-    for attempt in range(max_attempts):
-        if check_api_port():
-            print("✅ API detectada en el puerto 8000")
-            time.sleep(1)  # Un pequeño delay adicional
-            break
-        time.sleep(0.5)
-    
-    try:
-        webbrowser.open('http://127.0.0.1:8000/login/')
-        print("🌐 Navegador abierto en: http://127.0.0.1:8000/login/")
-        
-        # Abrir el dashboard del cliente
-        time.sleep(1)
-        webbrowser.open('http://127.0.0.1:8000/dashboard/')
-        print("📊 Dashboard abierto en: http://127.0.0.1:8000/dashboard/")
-        
-        # Abrir el dashboard del trabajador
-        time.sleep(1)
-        webbrowser.open('http://127.0.0.1:8000/trabajador-dashboard/')
-        print("🛠️ Dashboard Trabajador abierto en: http://127.0.0.1:8000/trabajador-dashboard/")
-    except Exception as e:
-        print(f"❌ Error al abrir el navegador: {e}")
-        print("💡 Puedes abrir manualmente: http://127.0.0.1:8000/login/")
+# --- Eliminamos la función open_browser_after_delay y su uso ---
 
 def main():
     ctk.set_appearance_mode("dark")
@@ -69,15 +38,9 @@ def main():
     api_thread.start()
     print("✅ API iniciada correctamente!")
     
-    # Abrir el navegador en un hilo separado
-    browser_thread = threading.Thread(target=open_browser_after_delay, daemon=True)
-    browser_thread.start()
+    # --- Ya NO abrimos el navegador automáticamente ---
     
     print("🖥️  Iniciando aplicación de escritorio...")
-    print("📋 Enlaces disponibles:")
-    print("   • Página de bienvenida: http://127.0.0.1:8000/login/")
-    print("   • API: http://127.0.0.1:8000")
-    print("   • Documentación: http://127.0.0.1:8000/docs")
     print("=" * 50)
     
     # Iniciar la aplicación principal

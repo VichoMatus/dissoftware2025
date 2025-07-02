@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
 import threading
-import webbrowser
 import time
 from api.trabajador_api.clientes_api import router as clientes_router
 from api.trabajador_api.peliculas_api import router as peliculas_router
@@ -59,29 +58,25 @@ def start_api_in_thread():
     api_thread.start()
     return api_thread
 
+# --- El navegador ya NO se abrirá automáticamente ---
+# (Dejo la función por si la quieres en desarrollo, pero no se llama abajo)
 def open_browser_delayed():
-    """Abre el navegador después de un pequeño delay para asegurar que la API esté lista"""
-    time.sleep(2)  # Esperar 2 segundos para que la API esté lista
+    import webbrowser
+    time.sleep(2)
     webbrowser.open("http://127.0.0.1:8000/login/")
 
 def start_api_with_browser():
-    """Inicia la API y abre el navegador automáticamente"""
-    # Iniciar API en hilo separado
     api_thread = start_api_in_thread()
-    
-    # Abrir navegador en otro hilo
     browser_thread = threading.Thread(target=open_browser_delayed, daemon=True)
     browser_thread.start()
-    
     return api_thread
 
 if __name__ == "__main__":
-    # Si se ejecuta directamente, iniciar la API y abrir navegador
-    print("� Iniciando CineMaster API...")
-    print("� La página de bienvenida se abrirá automáticamente en tu navegador")
-    start_api_with_browser()
-    
-    # Mantener el programa principal ejecutándose
+    print("🚀 Iniciando CineMaster API...")
+    start_api()  # <-- Solo inicia la API en modo backend puro
+
+    # Mantener el programa principal ejecutándose (aunque uvicorn ya bloquea)
+    # Puedes comentar el loop si ves que no es necesario.
     try:
         while True:
             time.sleep(1)
