@@ -2,8 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image, ImageTk, ImageDraw
 import os
-from services.payment_api_client import confirmar_pago
-import webbrowser
+import requests  # Nueva importación para hacer peticiones HTTP
 
 class PagoView(ctk.CTkToplevel):
     def __init__(self, selected_seat, selected_showtime, selected_showtime_string, movie_name, movie_image_path, cliente, booking_facade):
@@ -89,26 +88,146 @@ class PagoView(ctk.CTkToplevel):
             ctk.CTkLabel(self.frame_left_content, text="No se pudo cargar la imagen").pack(pady=10)
 
     def confirmar_pago_btn(self):
+        """Confirma el pago enviando los datos al endpoint de la API"""
         try:
+            # Formatear la fecha y hora
             showtime_str = (
                 self.selected_showtime_string.strftime('%Y-%m-%d %H:%M')
                 if hasattr(self.selected_showtime_string, "strftime")
                 else str(self.selected_showtime_string)
             )
-            url = (
-                f"http://127.0.0.1:8000/confirmar_pago_web/"
-                f"?client_id={self.cliente.cliente_id}"
-                f"&id_funcion={self.selected_showtime}"
-                f"&seat_id={self.selected_seat}"
-                f"&movie_name={self.movie_name}"
-                f"&showtime_string={showtime_str}"
-                f"&imagen={self.movie_image_path}"
-                f"&cliente_nombre={self.cliente.nombre}"
-                f"&costo_entrada=12.0"
-                f"&metodo_pago=tarjeta"
-                f"&cliente_email={self.cliente.Email}" 
+            
+            # Debug: Imprimir atributos del cliente para verificar
+            print(f"🔍 Tipo de cliente: {type(self.cliente)}")
+            print(f"🔍 Atributos del cliente: {[attr for attr in dir(self.cliente) if not attr.startswith('_')]}")
+            
+            # Intentar diferentes posibles nombres de atributos
+            client_id = None
+            cliente_nombre = None
+            cliente_email = None
+            
+            # Posibles nombres para ID del cliente
+            for attr in ['id_cliente', 'client_id', 'id', 'ID', 'cliente_id', 'user_id']:
+                if hasattr(self.cliente, attr):
+                    client_id = getattr(self.cliente, attr)
+                    print(f"✅ Encontrado ID del cliente: {attr} = {client_id}")
+                    break
+            
+            # Posibles nombres para nombre del cliente
+            for attr in ['Name', 'name', 'nombre', 'cliente_name', 'username', 'full_name']:
+                if hasattr(self.cliente, attr):
+                    cliente_nombre = getattr(self.cliente, attr)
+                    print(f"✅ Encontrado nombre del cliente: {attr} = {cliente_nombre}")
+                    break
+            
+            # Posibles nombres para email del cliente
+            for attr in ['Email', 'email', 'correo', 'mail', 'e_mail']:
+                if hasattr(self.cliente, attr):
+                    cliente_email = getattr(self.cliente, attr)
+                    print(f"✅ Encontrado email del cliente: {attr} = {cliente_email}")
+                    break
+            
+            # Verificar que tenemos los datos mínimos
+            if client_id is None:
+                # Intentar con valores por defecto o buscar en el objeto
+                if hasattr(self.cliente, '__dict__'):
+                    print(f"🔍 Contenido del cliente: {self.cliente.__dict__}")
+                raise ValueError("No se pudo encontrar el ID del cliente. Atributos disponibles: " + 
+                               str([attr for attr in dir(self.cliente) if not attr.startswith('_')]))
+            
+            if cliente_nombre is None:
+                cliente_nombre = "Cliente Sin Nombre"  # Valor por defecto
+                print("⚠️ Usando nombre por defecto")
+            
+            if cliente_email is None:
+                cliente_email = "sin-email@ejemplo.com"  # Valor por defecto
+                print("⚠️ Usando email por defecto")
+            
+            # Preparar los datos para el endpoint
+            reserva_data = {
+                "client_id": int(client_id),  # Asegurar que sea entero
+                "id_funcion": int(self.selected_showtime),  # Asegurar que sea entero
+                "seat_id": str(self.selected_seat),
+                "movie_name": str(self.movie_name),
+                "showtime_string": showtime_str,
+                "imagen": str(self.movie_image_path) if self.movie_image_path else None,
+                "cliente_nombre": str(cliente_nombre),
+                "costo_entrada": 12.0,
+                "metodo_pago": "tarjeta",
+                "cliente_email": str(cliente_email)
+            }
+            
+            print("📤 Enviando datos de reserva a la API...")
+            print(f"Datos finales: {reserva_data}")
+            
+            # Deshabilitar el botón mientras se procesa
+            self.confirmar_button.configure(state="disabled", text="Procesando...")
+            
+            # Llamar al endpoint de la API
+            response = requests.post(
+                "http://127.0.0.1:8000/reservas/confirmar",
+                json=reserva_data,
+                timeout=60  # Timeout de 60 segundos
             )
-            webbrowser.open(url)
-            self.destroy()
+            
+            print(f"📥 Respuesta de la API: Status {response.status_code}")
+            
+            if response.status_code == 200:
+                resultado = response.json()
+                print(f"📥 Resultado: {resultado}")
+                
+                if resultado["success"]:
+                    messagebox.showinfo(
+                        "¡Reserva Confirmada!", 
+                        f"✅ {resultado['message']}\n\n"
+                        f"🎫 ID de Reserva: {resultado.get('reserva_id', 'N/A')}\n"
+                        f"🎬 Película: {self.movie_name}\n"
+                        f"💺 Asiento: {self.selected_seat}\n"
+                        f"📅 Horario: {showtime_str}"
+                    )
+                    self.destroy()
+                    # Regresar a la cartelera
+                    self.regresar_a_cartelera()
+                else:
+                    messagebox.showerror("Error en la Reserva", resultado["message"])
+                    self.confirmar_button.configure(state="normal", text="Confirmar Pago")
+            else:
+                error_detail = "Error desconocido"
+                try:
+                    error_response = response.json()
+                    error_detail = error_response.get("detail", f"Error HTTP {response.status_code}")
+                    print(f"❌ Error de la API: {error_response}")
+                except:
+                    error_detail = f"Error HTTP {response.status_code}"
+                    print(f"❌ Error HTTP: {response.status_code}")
+                    print(f"❌ Respuesta: {response.text}")
+                
+                messagebox.showerror("Error en la Reserva", f"❌ {error_detail}")
+                self.confirmar_button.configure(state="normal", text="Confirmar Pago")
+                
+        except ValueError as ve:
+            print(f"❌ Error de validación: {ve}")
+            messagebox.showerror("Error de Datos", f"❌ {ve}")
+            self.confirmar_button.configure(state="normal", text="Confirmar Pago")
+        except requests.exceptions.Timeout:
+            print("❌ Timeout de conexión")
+            messagebox.showerror("Error de Conexión", "⏰ La petición tardó demasiado. Verifica tu conexión.")
+            self.confirmar_button.configure(state="normal", text="Confirmar Pago")
+        except requests.exceptions.ConnectionError:
+            print("❌ Error de conexión con la API")
+            messagebox.showerror("Error de Conexión", "🔌 No se pudo conectar con la API. Verifica que esté ejecutándose.")
+            self.confirmar_button.configure(state="normal", text="Confirmar Pago")
         except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un error al abrir la confirmación: {e}")
+            print(f"❌ Error inesperado: {e}")
+            print(f"❌ Tipo de error: {type(e)}")
+            messagebox.showerror("Error", f"❌ Ocurrió un error inesperado: {e}")
+            self.confirmar_button.configure(state="normal", text="Confirmar Pago")
+
+    def regresar_a_cartelera(self):
+        """Regresa a la vista principal de cartelera"""
+        try:
+            from views.cartelera_view import MainView
+            app = MainView(self.cliente)
+            app.mainloop()
+        except Exception as e:
+            print(f"Error al regresar a cartelera: {e}")
