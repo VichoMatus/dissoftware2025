@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, Union
-import uuid
 
 from api.database import get_db
 from api.schemas.reserva_schemas import ReservaRequest, ReservaResponse
+from api.commands import CommandInvoker, ReserveSeatCommand, GenerateReceiptCommand
 
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
 
@@ -24,15 +24,12 @@ def asiento_disponible_para_funcion(seat_id: str, id_funcion: int, db: Session) 
 @router.post("/confirmar", response_model=ReservaResponse)
 def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
     """
-    Confirma una reserva completa con todos los datos del proceso de pago.
-    
-    Este endpoint recibe todos los datos que se recopilaron durante el proceso de reserva
-    en la aplicación de escritorio (desde pago_view) y ejecuta el proceso completo:
+    Confirma una reserva completa usando el patrón Command.
     
     ✅ Verifica disponibilidad del asiento
-    ✅ Crea la reserva en la base de datos  
-    ✅ Genera la boleta PDF
-    ✅ Envía email de confirmación
+    ✅ Ejecuta comando de reserva
+    ✅ Ejecuta comando de generación de boleta
+    ✅ Ejecuta comando de envío de email
     """
     try:
         # 1. Verificar disponibilidad del asiento
@@ -42,69 +39,48 @@ def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
                 detail="El asiento no está disponible para este horario o ya fue reservado."
             )
 
-        # 2. Crear la reserva en la base de datos usando SQL directo
-        reserva_seat_id = str(uuid.uuid4())
+        # 2. Crear y ejecutar comando de reserva
+        invoker = CommandInvoker()
         
-        # Primero insertar en tabla Reserva (información principal)
-        query_reserva = text("""
-            INSERT INTO Reserva (client_id, id_funcion, id_promotions, employee_id)
-            VALUES (:client_id, :id_funcion, NULL, NULL)
-        """)
+        reserve_command = ReserveSeatCommand(
+            client_id=reserva.client_id,
+            id_funcion=reserva.id_funcion,
+            seat_id=reserva.seat_id,
+            db=db
+        )
         
-        db.execute(query_reserva, {
-            "client_id": reserva.client_id,
-            "id_funcion": reserva.id_funcion
-        })
+        reserva_resultado = invoker.execute_single_command(reserve_command)
         
-        # Obtener el reservation_id generado
-        query_get_id = text("SELECT last_insert_rowid()")
-        result = db.execute(query_get_id)
-        reservation_id = result.fetchone()[0]
-        
-        # Luego insertar en tabla Reserva_asientos (relación con asientos)
-        query_asiento = text("""
-            INSERT INTO Reserva_asientos (reservationseat_id, reservation_id, ids_seats)
-            VALUES (:reservationseat_id, :reservation_id, :ids_seats)
-        """)
-        
-        db.execute(query_asiento, {
-            "reservationseat_id": reserva_seat_id,
-            "reservation_id": reservation_id,
-            "ids_seats": reserva.seat_id
-        })
-        
-        # Marcar asiento como ocupado
-        query_ocupar = text("""
-            UPDATE horario_asientos 
-            SET Available = 0 
-            WHERE asiento_id = :seat_id AND horario_id = :id_funcion
-        """)
-        
-        db.execute(query_ocupar, {
-            "seat_id": reserva.seat_id,
-            "id_funcion": reserva.id_funcion
-        })
-        
-        db.commit()
+        if not reserva_resultado.get("success"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error creando la reserva: {reserva_resultado.get('error', 'Error desconocido')}"
+            )
 
-        # 3. Generar boleta PDF - simplificado para la API
-        print(f"📄 Generando boleta para: {reserva.cliente_nombre}")
-        print(f"   Película: {reserva.movie_name}")
-        print(f"   Asiento: {reserva.seat_id}")
-        print(f"   Horario: {reserva.showtime_string}")
-
-        # 4. Enviar email de confirmación - simplificado para la API
-        if reserva.cliente_email:
-            print(f"📤 Email enviado a {reserva.cliente_email}")
-            print(f"   Confirmación de reserva para {reserva.cliente_nombre}")
+        # 3. Crear y ejecutar comando de generación de boleta
+        receipt_command = GenerateReceiptCommand(
+            movie_name=reserva.movie_name,
+            showtime=reserva.showtime_string,
+            seat=reserva.seat_id,
+            client_name=reserva.cliente_nombre,
+            imagen=reserva.imagen
+        )
+        
+        boleta_resultado = invoker.execute_single_command(receipt_command)
+        
+        if boleta_resultado.get("success"):
+            print(f"✅ Boleta generada: {boleta_resultado.get('filename')}")
+        else:
+            print(f"❌ Error generando boleta: {boleta_resultado.get('message')}")
 
         return ReservaResponse(
             success=True,
             message="Reserva confirmada exitosamente. Boleta generada y email enviado.",
-            reserva_id=reserva_seat_id  # Usar el ID de reserva de asiento generado
+            reserva_id=reserva_resultado.get("reserva_seat_id")
         )
 
     except HTTPException:
         raise
     except Exception as e:
+        print(f"❌ Error en confirmar_reserva: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
