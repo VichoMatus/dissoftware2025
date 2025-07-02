@@ -11,6 +11,7 @@ from api.trabajador_api.promociones_api import router as promociones_router
 from api.routers import cartelera
 from api.routers import reservas
 
+
 # Importar routers
 try:
     from .routers import login, auth, dashboard
@@ -39,9 +40,6 @@ app.include_router(clientes_router)
 app.include_router(peliculas_router)
 app.include_router(reservas_router)
 app.include_router(funciones_router)
-app.include_router(promociones_router)
-
-
 
 
 @app.get("/")

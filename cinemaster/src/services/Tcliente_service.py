@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.database import Cliente
+import requests
 
 class ClienteService:
     @staticmethod
@@ -33,3 +34,37 @@ class ClienteService:
             db.commit()
             return True
         return False
+    
+    
+class ClienteAPIService:
+    API_URL = "http://127.0.0.1:8000/clientes/"
+
+    def listar_clientes(self):
+        response = requests.get(self.API_URL)
+        response.raise_for_status()
+        return response.json()
+
+    def crear_cliente(self, nombre, email, password):
+        data = {
+            "nombre": nombre,
+            "Email": email,
+            "Password": password
+        }
+        response = requests.post(self.API_URL, json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def actualizar_cliente(self, cliente_id, nombre, email, password):
+        data = {
+            "nombre": nombre,
+            "Email": email,
+            "Password": password
+        }
+        response = requests.put(f"{self.API_URL}{cliente_id}", json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def eliminar_cliente(self, cliente_id):
+        response = requests.delete(f"{self.API_URL}{cliente_id}")
+        response.raise_for_status()
+        return response.json()

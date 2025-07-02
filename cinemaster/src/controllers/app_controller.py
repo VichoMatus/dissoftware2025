@@ -4,6 +4,7 @@ from views.cartelera_view import MainView
 from views.trabajador_view import TrabajadorView
 from views.admin_view import AdminView
 from api.services.register_login import ApiAuthService, ApiRegistrationService, AuthServiceInterface, RegistrationServiceInterface, DashboardLogger
+import requests
 
 class AppController:
     """
@@ -82,10 +83,36 @@ class AppController:
         app = MainView(cliente, self._dashboard_logger)
         app.mainloop()
     
-    def open_trabajador_view(self, employee_name):
-        app = TrabajadorView(employee_name)
-        app.mainloop()
+    def set_current_trabajador(self, nombre, trabajador_id, email):
+        url = "http://127.0.0.1:8000/trabajador-dashboard/login"
+        data = {
+            "trabajador_name": nombre,
+            "trabajador_id": trabajador_id,
+            "email": email
+        }
+        try:
+            response = requests.post(url, json=data)
+            print("API trabajador login:", response.json())
+        except Exception as e:
+            print(f"Error al logear trabajador en API: {e}")
+
     
+
+    def open_trabajador_view(self, empleado):
+        try:
+            self.set_current_trabajador(
+                empleado.Name,
+                empleado.employee_id,
+                empleado.Email
+            )
+        except Exception as e:
+            print(f"No se pudo establecer trabajador en dashboard: {e}")
+
+        app = TrabajadorView(empleado.Name)
+        app.mainloop()
+
+
+
     def open_admin_view(self):
         """
         Abre la vista de administrador
