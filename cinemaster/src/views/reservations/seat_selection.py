@@ -49,15 +49,16 @@ class SeatSelectionView(ctk.CTkToplevel):
         self.showtime_label = ctk.CTkLabel(self.selection_frame, text=f"Horario: {selected_showtime_string}", font=("Arial", 14))
         self.showtime_label.pack(pady=10)
 
+        # Crear el botón de confirmación ANTES de show_seat_dropdown
+        self.confirm_button = ctk.CTkButton(self.selection_frame, text="Confirmar Selección", width=200, height=40, command=self.confirm_selection)
+        self.confirm_button.pack(pady=30)
+
         self.show_seat_dropdown()
 
         # Usa el widget para la imagen de asientos
         image_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images", "Asientos.png"))
         self.seat_image_widget = SeatImageWidget(self.image_frame, image_path)
         self.seat_image_widget.pack(side="left", padx=100)
-
-        self.confirm_button = ctk.CTkButton(self.selection_frame, text="Confirmar Selección", width=200, height=40, command=self.confirm_selection)
-        self.confirm_button.pack(pady=30)
 
     def create_header(self):
         current_dir = os.path.dirname(__file__)
@@ -76,7 +77,12 @@ class SeatSelectionView(ctk.CTkToplevel):
             response = requests.get(f"http://127.0.0.1:8000/cartelera/horarios/{showtime_id}/asientos")
             if response.status_code == 200:
                 asientos_data = response.json()
-                return [asiento['nombre'] for asiento in asientos_data]
+                # Filtrar solo asientos disponibles y usar el campo correcto
+                available_seats = []
+                for asiento in asientos_data:
+                    if asiento.get('disponible', False):  # Solo asientos disponibles
+                        available_seats.append(asiento['numero_asiento'])
+                return available_seats
             else:
                 print(f"❌ Error al obtener asientos desde API: {response.status_code}")
                 messagebox.showerror("Error", f"No se pudieron cargar los asientos desde la API. Código: {response.status_code}")

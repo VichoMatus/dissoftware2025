@@ -24,7 +24,7 @@ class HorarioResponse(BaseModel):
     estado: str
 
 class AsientoResponse(BaseModel):
-    asiento_id: int
+    asiento_id: str  # Cambiado de int a str porque los IDs son como 'A1', 'A2', etc.
     numero_asiento: str
     fila: str
     sala_id: int

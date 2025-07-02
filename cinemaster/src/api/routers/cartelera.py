@@ -30,12 +30,6 @@ def listar_cartelera(db: Session = Depends(get_db)):
             titulo=row.Title,
             genero=row.Gender,
             duracion=row.Duration,
-            clasificacion=None,  # No existe en la BD actual
-            sinopsis=None,       # No existe en la BD actual
-            director=None,       # No existe en la BD actual
-            actores=None,        # No existe en la BD actual
-            fecha_estreno=None,  # No existe en la BD actual
-            precio=None          # No existe en la BD actual
         ))
     
     return peliculas
@@ -100,39 +94,64 @@ def obtener_horarios_pelicula(
 
 
 @router.get("/horarios/{horario_id}/asientos", response_model=List[AsientoResponse])
-def obtener_asientos_disponibles(horario_id: int, db: Session = Depends(get_db)):
+def obtener_asientos_disponibles(
+    horario_id: int = Path(..., description="ID del horario", gt=0),
+    db: Session = Depends(get_db)
+):
     """Obtiene los asientos disponibles para un horario específico"""
-    # Primero verificar que el horario existe
-    query_horario = text("SELECT id_Hall FROM Horario h JOIN Sala s ON 1=1 WHERE h.id = :horario_id LIMIT 1")
-    result = db.execute(query_horario, {"horario_id": horario_id})
-    horario = result.fetchone()
-    
-    if not horario:
-        raise HTTPException(status_code=404, detail="Horario no encontrado")
-    
-    # Obtener todos los asientos disponibles
-    query = text("""
-        SELECT a.ids_seats as asiento_id, a.ids_seats as numero_asiento, 
-               'A' as fila, a.id_Hall as sala_id,
-               COALESCE(ha.Available, 1) as disponible
-        FROM Asiento a
-        LEFT JOIN horario_asientos ha ON a.ids_seats = ha.asiento_id 
-                                      AND ha.horario_id = :horario_id
-        ORDER BY a.ids_seats
-    """)
-    result = db.execute(query, {"horario_id": horario_id})
-    
-    asientos = []
-    for row in result:
-        asientos.append(AsientoResponse(
-            asiento_id=row.asiento_id,
-            numero_asiento=row.numero_asiento,
-            fila=row.fila,
-            sala_id=row.sala_id,
-            disponible=bool(row.disponible)
-        ))
-    
-    return asientos
+    try:
+        print(f"🔍 API: Buscando asientos para horario ID: {horario_id}")
+        
+        # Primero verificar que el horario existe
+        query_horario = text("SELECT id, pelicula_id FROM Horario WHERE id = :horario_id")
+        result = db.execute(query_horario, {"horario_id": horario_id})
+        horario = result.fetchone()
+        
+        if not horario:
+            print(f"❌ API: Horario con ID {horario_id} no encontrado")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No se encontró el horario con ID {horario_id}"
+            )
+        
+        print(f"✅ API: Horario encontrado, buscando asientos...")
+        
+        # Obtener asientos con su disponibilidad para este horario específico
+        query = text("""
+            SELECT 
+                a.ids_seats as asiento_id,
+                a.ids_seats as numero_asiento,
+                SUBSTR(a.ids_seats, 1, 1) as fila,
+                COALESCE(a.id_Hall, 1) as sala_id,
+                COALESCE(ha.Available, 1) as disponible
+            FROM Asiento a
+            LEFT JOIN horario_asientos ha ON a.ids_seats = ha.asiento_id 
+                                          AND ha.horario_id = :horario_id
+            ORDER BY a.ids_seats
+        """)
+        result = db.execute(query, {"horario_id": horario_id})
+        
+        asientos = []
+        for row in result:
+            asientos.append(AsientoResponse(
+                asiento_id=row.asiento_id,
+                numero_asiento=row.numero_asiento,
+                fila=row.fila,
+                sala_id=row.sala_id,
+                disponible=bool(row.disponible)
+            ))
+        
+        print(f"✅ API: Encontrados {len(asientos)} asientos para horario {horario_id}")
+        return asientos
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ API: Error inesperado al obtener asientos: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error interno al obtener asientos: {str(e)}"
+        )
 
 
 @router.get("/debug/info")
@@ -149,13 +168,26 @@ def debug_info(db: Session = Depends(get_db)):
         result_horarios = db.execute(query_horarios)
         horarios = [{"horario_id": row.id, "pelicula_id": row.pelicula_id, "fecha": str(row.fecha)} for row in result_horarios]
         
+        # Información de asientos y horario_asientos
+        query_asientos = text("SELECT COUNT(*) as total FROM Asiento")
+        result_asientos = db.execute(query_asientos)
+        total_asientos = result_asientos.fetchone().total
+        
+        query_ha = text("SELECT COUNT(*) as total FROM horario_asientos")
+        result_ha = db.execute(query_ha)
+        total_horario_asientos = result_ha.fetchone().total
+        
         return {
             "peliculas_disponibles": peliculas,
             "horarios_disponibles": horarios,
-            "urls_validas": [
-                f"/cartelera/{p['id']}/horarios" for p in peliculas
-            ],
-            "mensaje": "Usa estos URLs válidos para obtener horarios"
+            "total_asientos": total_asientos,
+            "total_horario_asientos": total_horario_asientos,
+            "rutas_validas": {
+                "obtener_cartelera": "/cartelera/",
+                "obtener_horarios": [f"/cartelera/{p['id']}/horarios" for p in peliculas],
+                "obtener_asientos": [f"/cartelera/horarios/{h['horario_id']}/asientos" for h in horarios]
+            },
+            "mensaje": "Usa estas rutas para acceder a la información"
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "tipo_error": type(e).__name__}

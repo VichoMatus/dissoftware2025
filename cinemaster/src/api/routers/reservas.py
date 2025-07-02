@@ -43,19 +43,34 @@ def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
             )
 
         # 2. Crear la reserva en la base de datos usando SQL directo
-        reserva_id = str(uuid.uuid4())
+        reserva_seat_id = str(uuid.uuid4())
         
-        # Insertar en tabla de reservas
+        # Primero insertar en tabla Reserva (información principal)
         query_reserva = text("""
-            INSERT INTO Reserva_asientos (reservationseat_id, client_id, id_funcion, seat_id)
-            VALUES (:reserva_id, :client_id, :id_funcion, :seat_id)
+            INSERT INTO Reserva (client_id, id_funcion, id_promotions, employee_id)
+            VALUES (:client_id, :id_funcion, NULL, NULL)
         """)
         
         db.execute(query_reserva, {
-            "reserva_id": reserva_id,
             "client_id": reserva.client_id,
-            "id_funcion": reserva.id_funcion,
-            "seat_id": reserva.seat_id
+            "id_funcion": reserva.id_funcion
+        })
+        
+        # Obtener el reservation_id generado
+        query_get_id = text("SELECT last_insert_rowid()")
+        result = db.execute(query_get_id)
+        reservation_id = result.fetchone()[0]
+        
+        # Luego insertar en tabla Reserva_asientos (relación con asientos)
+        query_asiento = text("""
+            INSERT INTO Reserva_asientos (reservationseat_id, reservation_id, ids_seats)
+            VALUES (:reservationseat_id, :reservation_id, :ids_seats)
+        """)
+        
+        db.execute(query_asiento, {
+            "reservationseat_id": reserva_seat_id,
+            "reservation_id": reservation_id,
+            "ids_seats": reserva.seat_id
         })
         
         # Marcar asiento como ocupado
@@ -86,7 +101,7 @@ def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
         return ReservaResponse(
             success=True,
             message="Reserva confirmada exitosamente. Boleta generada y email enviado.",
-            reserva_id=reserva_id
+            reserva_id=reserva_seat_id  # Usar el ID de reserva de asiento generado
         )
 
     except HTTPException:
