@@ -8,17 +8,19 @@ from api.trabajador_api.reservas_api import router as reservas_router
 from api.trabajador_api.funciones_api import router as funciones_router
 from api.routers import cartelera
 from api.routers import reservas
+from .routers import dashboard
+from api.routers import dashboard
 
 
 # Importar routers
 try:
-    from .routers import login, auth, dashboard
+    from .routers import login, auth, clientes, empleados
 except ImportError:
     # Fallback para importación absoluta cuando se ejecuta directamente
     import sys
     import os
     sys.path.append(os.path.dirname(__file__))
-    from routers import login, auth, dashboard
+    from routers import login, auth, clientes, empleados
 
 # Crear la instancia de FastAPI
 app = FastAPI(
@@ -34,6 +36,11 @@ app.include_router(dashboard.router)
 app.include_router(cartelera.router)
 app.include_router(reservas.router)
 
+# Routers para admin/trabajador con funcionalidad de clonado
+app.include_router(clientes.router, prefix="/api", tags=["clientes"])
+app.include_router(empleados.router, prefix="/api", tags=["empleados"])
+
+# Routers de trabajador API (legacy)
 app.include_router(clientes_router)
 app.include_router(peliculas_router)
 app.include_router(reservas_router)

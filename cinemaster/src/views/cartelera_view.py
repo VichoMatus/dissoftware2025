@@ -59,7 +59,7 @@ class MainView(ctk.CTk):
             response = requests.get("http://127.0.0.1:8000/cartelera/")
             if response.status_code == 200:
                 peliculas_data = response.json()
-                return PeliculaAdapter.from_api_list(peliculas_data)
+                return PeliculaAdapter.from_api_list(peliculas_data, self)
             else:
                 print(f"❌ Error al obtener películas desde API: {response.status_code}")
                 messagebox.showerror("Error", f"No se pudieron cargar las películas desde la API. Código: {response.status_code}")
@@ -72,13 +72,17 @@ class MainView(ctk.CTk):
     def get_horarios_from_api(self, pelicula_id):
         """Obtiene los horarios EXCLUSIVAMENTE desde la API"""
         try:
+            print(f"🔍 Obteniendo horarios para película ID: {pelicula_id}")
             response = requests.get(f"http://127.0.0.1:8000/cartelera/{pelicula_id}/horarios")
             if response.status_code == 200:
                 horarios_data = response.json()
+                print(f"✅ Recibidos {len(horarios_data)} horarios de la API")
                 horarios_with_ids = []
                 for horario in horarios_data:
+                    # La API devuelve 'horario_id', no 'id'
                     fecha_dt = datetime.fromisoformat(horario['fecha'].replace('Z', '+00:00')) if horario['fecha'] else None
-                    horarios_with_ids.append((horario['id'], fecha_dt))
+                    horarios_with_ids.append((horario['horario_id'], fecha_dt))
+                    print(f"  - Horario ID: {horario['horario_id']}, Fecha: {fecha_dt}")
                 return horarios_with_ids
             else:
                 print(f"❌ Error al obtener horarios desde API: {response.status_code}")
@@ -90,12 +94,17 @@ class MainView(ctk.CTk):
             return []
 
     def reserve_movie(self, pelicula, showtimes_with_ids, cliente):
-        # Obtener horarios EXCLUSIVAMENTE desde la API
+        # Obtener horarios EXCLUSIVAMENTE desde la API y llenar pelicula.horarios
         horarios_api = self.get_horarios_from_api(pelicula.id_pelicula)
         
         if not horarios_api:
             messagebox.showerror("Error", "No se pudieron cargar los horarios para esta película.")
             return
+        
+        # Convertir tuplas de API a objetos compatibles con CartelClasico
+        from adapters.horario_adapter import HorarioAPI
+        pelicula.horarios = [HorarioAPI(horario_id, fecha) for horario_id, fecha in horarios_api]
+        print(f"✅ Película {pelicula.Title} tiene {len(pelicula.horarios)} horarios")
         
         # Registrar selección de película en el dashboard
         if self.dashboard_logger:

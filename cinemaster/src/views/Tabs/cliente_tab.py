@@ -53,6 +53,21 @@ class ClientesTab(ctk.CTkFrame):
             "membership": values[3] == "Sí"
         }
 
+    def get_selected_cliente_data(self):
+        """Obtiene los datos del cliente seleccionado para clonado"""
+        selected = self.tree.selection()
+        if not selected:
+            return None
+        values = self.tree.item(selected[0], "values")
+        if not values:
+            return None
+        return {
+            "id": values[0],
+            "nombre": values[1],
+            "email": values[2],
+            "membership": values[3] == "Sí"
+        }
+
     def mostrar_formulario_agregar(self):
         """Muestra el formulario para agregar un nuevo cliente"""
         top = ctk.CTkToplevel(self)
