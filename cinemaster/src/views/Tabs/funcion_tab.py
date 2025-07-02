@@ -37,7 +37,7 @@ class FuncionesTab(ctk.CTkFrame):
     def mostrar_formulario_agregar(self):
         top = ctk.CTkToplevel(self)
         top.title("Agregar Función")
-        top.geometry("350x400")
+        top.geometry("1100x700")
 
         lbl_pelicula = ctk.CTkLabel(top, text="ID Película:")
         lbl_pelicula.pack(pady=5)
@@ -95,7 +95,7 @@ class FuncionesTab(ctk.CTkFrame):
 
         top = ctk.CTkToplevel(self)
         top.title("Actualizar Función")
-        top.geometry("350x400")
+        top.geometry("1100x700")
 
         lbl_pelicula = ctk.CTkLabel(top, text="ID Película:")
         lbl_pelicula.pack(pady=5)

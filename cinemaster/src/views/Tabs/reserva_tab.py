@@ -36,7 +36,7 @@ class ReservasTab(ctk.CTkFrame):
     def mostrar_formulario_agregar(self):
         top = ctk.CTkToplevel(self)
         top.title("Agregar Reserva")
-        top.geometry("350x300")
+        top.geometry("1100x700")
 
         lbl_cliente = ctk.CTkLabel(top, text="ID Cliente:")
         lbl_cliente.pack(pady=5)
@@ -90,7 +90,7 @@ class ReservasTab(ctk.CTkFrame):
 
         top = ctk.CTkToplevel(self)
         top.title("Actualizar Reserva")
-        top.geometry("350x300")
+        top.geometry("1100x700")
 
         lbl_cliente = ctk.CTkLabel(top, text="ID Cliente:")
         lbl_cliente.pack(pady=5)

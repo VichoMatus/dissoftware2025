@@ -210,11 +210,3 @@ class TrabajadorView(ctk.CTk):
         self.sidebar = SidebarMenu(self, on_tab_selected)
         self.sidebar.pack(side="left", fill="y")
 
-        #Boton para abrir la API
-        self.boton_api = ctk.CTkButton(self,text="Ir a API",command=self.abrir_api,fg_color="#8e24aa",hover_color="#6d1b7b")
-        self.boton_api.place(relx=0.98, rely=0.98, anchor="se")
-
-        self.cliente_tab.cargar_datos()
-
-    def abrir_api(self):
-        webbrowser.open("http://localhost:8000/docs")

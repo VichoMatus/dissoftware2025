@@ -7,11 +7,9 @@ class ClientesTab(ctk.CTkFrame):
         super().__init__(parent)
         self.cliente_service = cliente_service
 
-        # Configuración de la interfaz
         self.label = ctk.CTkLabel(self, text="Lista de Clientes", font=("Arial", 20))
         self.label.pack(pady=10)
 
-        # Treeview para mostrar los clientes
         self.tree = ttk.Treeview(self, columns=("ID", "Nombre", "Correo", "Membresía"), show="headings")
         self.tree.heading("ID", text="ID")
         self.tree.heading("Nombre", text="Nombre")
@@ -19,7 +17,6 @@ class ClientesTab(ctk.CTkFrame):
         self.tree.heading("Membresía", text="Membresía")
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Cargar datos iniciales
         self.cargar_datos()
 
     def cargar_datos(self):
@@ -34,12 +31,13 @@ class ClientesTab(ctk.CTkFrame):
         """Muestra los clientes en el Treeview"""
         for item in self.tree.get_children():
             self.tree.delete(item)
+        
         for cliente in clientes:
             self.tree.insert("", "end", values=(
-                cliente.get("cliente_id"),
-                cliente.get("nombre"),
-                cliente.get("email"),
-                "Sí" if cliente.get("membership") else "No"
+                cliente.get("cliente_id", ""),
+                cliente.get("nombre", ""),
+                cliente.get("Email", ""),
+                "Sí" if cliente.get("Membership", False) else "No"
             ))
 
     def obtener_cliente_seleccionado(self):
@@ -59,10 +57,9 @@ class ClientesTab(ctk.CTkFrame):
         """Muestra el formulario para agregar un nuevo cliente"""
         top = ctk.CTkToplevel(self)
         top.title("Agregar Cliente")
-        top.geometry("350x300")
-        top.grab_set()  # Hace la ventana modal
+        top.geometry("1100x700")
+        top.transient(self.master)
 
-        # Campos del formulario
         lbl_nombre = ctk.CTkLabel(top, text="Nombre:")
         lbl_nombre.pack(pady=5)
         entry_nombre = ctk.CTkEntry(top)
@@ -106,8 +103,9 @@ class ClientesTab(ctk.CTkFrame):
 
         top = ctk.CTkToplevel(self)
         top.title("Actualizar Cliente")
-        top.geometry("350x300")
-        top.grab_set()
+        top.geometry("1100x700")
+        top.transient(self.master)
+        self.password_modificada = False
 
         lbl_nombre = ctk.CTkLabel(top, text="Nombre:")
         lbl_nombre.pack(pady=5)
@@ -121,37 +119,47 @@ class ClientesTab(ctk.CTkFrame):
         entry_email.insert(0, cliente["email"])
         entry_email.pack(pady=5)
 
-        lbl_password = ctk.CTkLabel(top, text="Password (dejar vacío para no cambiar):")
+        lbl_password = ctk.CTkLabel(top, text="Contraseña")
         lbl_password.pack(pady=5)
+        
         entry_password = ctk.CTkEntry(top, show="*")
         entry_password.pack(pady=5)
+        
+        def detectar_cambio_password(*args):
+            self.password_modificada = bool(entry_password.get())
+
+        entry_password.bind("<KeyRelease>", detectar_cambio_password)
 
         def guardar_actualizacion():
             """Guarda los cambios del cliente"""
             nombre = entry_nombre.get()
             email = entry_email.get()
-            password = entry_password.get()
+            nueva_password = entry_password.get() if self.password_modificada else None
+            
             if not nombre or not email:
                 messagebox.showerror("Error", "Nombre y email son obligatorios")
                 return
+                
             try:
                 self.cliente_service.actualizar_cliente(
-                    cliente["cliente_id"], 
-                    nombre, 
-                    email, 
-                    password if password else None
+                    cliente_id=cliente["cliente_id"], 
+                    nombre=nombre, 
+                    email=email, 
+                    password=nueva_password
                 )
+                
                 messagebox.showinfo("Éxito", "Cliente actualizado correctamente")
                 top.destroy()
                 self.cargar_datos()
+                
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo actualizar el cliente:\n{e}")
 
         btn_guardar = ctk.CTkButton(top, text="Guardar", command=guardar_actualizacion, fg_color="#fbc02d")
         btn_guardar.pack(pady=15)
 
+
     def eliminar_cliente_seleccionado(self):
-        """Elimina el cliente seleccionado"""
         cliente = self.obtener_cliente_seleccionado()
         if not cliente:
             messagebox.showwarning("Aviso", "Selecciona un cliente para eliminar")
