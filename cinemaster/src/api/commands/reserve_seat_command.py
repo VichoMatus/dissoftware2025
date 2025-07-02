@@ -7,7 +7,7 @@ from typing import Dict, Any
 class ReserveSeatCommand(Command):
     """
     Comando para reservar un asiento en la API.
-    Maneja toda la lógica de creación de reserva en base de datos.
+    Solo se encarga de la lógica de base de datos, sin notificaciones.
     """
     
     def __init__(self, client_id: int, id_funcion: int, seat_id: str, db: Session):

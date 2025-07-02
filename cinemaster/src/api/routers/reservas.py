@@ -5,9 +5,17 @@ from typing import Optional, Union
 
 from api.database import get_db
 from api.schemas.reserva_schemas import ReservaRequest, ReservaResponse
-from api.commands import CommandInvoker, ReserveSeatCommand, GenerateReceiptCommand
+from api.commands import CommandInvoker, ReserveSeatCommand, GenerateReceiptCommand, NotificationCommand
+from api.observers import EmailObserver, ReservationSubject
 
 router = APIRouter(prefix="/reservas", tags=["Reservas"])
+
+# Crear sujeto de reserva y observador de email (instancias globales)
+reservation_subject = ReservationSubject()
+email_observer = EmailObserver()
+
+# Registrar el observador de email
+reservation_subject.attach(email_observer)
 
 def asiento_disponible_para_funcion(seat_id: str, id_funcion: int, db: Session) -> bool:
     """Verifica si un asiento está disponible para una función específica"""
@@ -24,12 +32,12 @@ def asiento_disponible_para_funcion(seat_id: str, id_funcion: int, db: Session) 
 @router.post("/confirmar", response_model=ReservaResponse)
 def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
     """
-    Confirma una reserva completa usando el patrón Command.
+    Confirma una reserva completa usando el patrón Command + Observer.
     
     ✅ Verifica disponibilidad del asiento
     ✅ Ejecuta comando de reserva
     ✅ Ejecuta comando de generación de boleta
-    ✅ Ejecuta comando de envío de email
+    ✅ Ejecuta comando de notificación (envío de email automático)
     """
     try:
         # 1. Verificar disponibilidad del asiento
@@ -72,6 +80,31 @@ def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
             print(f"✅ Boleta generada: {boleta_resultado.get('filename')}")
         else:
             print(f"❌ Error generando boleta: {boleta_resultado.get('message')}")
+
+        # 4. Crear y ejecutar comando de notificación (envío automático de email)
+        if reserva.cliente_email:
+            event_data = {
+                "cliente_email": reserva.cliente_email,
+                "cliente_nombre": reserva.cliente_nombre,
+                "movie_name": reserva.movie_name,
+                "seat_id": reserva.seat_id,
+                "showtime_string": reserva.showtime_string,
+                "pdf_path": boleta_resultado.get("pdf_path"),
+                "reserva_id": reserva_resultado.get("reserva_seat_id"),
+                "reservation_id": reserva_resultado.get("reservation_id")
+            }
+            
+            notification_command = NotificationCommand(
+                reservation_subject=reservation_subject,
+                event_data=event_data
+            )
+            
+            notification_resultado = invoker.execute_single_command(notification_command)
+            
+            if notification_resultado.get("success"):
+                print(f"✅ Notificaciones enviadas: {notification_resultado.get('message')}")
+            else:
+                print(f"❌ Error enviando notificaciones: {notification_resultado.get('message')}")
 
         return ReservaResponse(
             success=True,
