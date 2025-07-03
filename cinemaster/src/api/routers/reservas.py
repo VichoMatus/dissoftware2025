@@ -65,13 +65,14 @@ def confirmar_reserva(reserva: ReservaRequest, db: Session = Depends(get_db)):
                 detail=f"Error creando la reserva: {reserva_resultado.get('error', 'Error desconocido')}"
             )
 
-        # 3. Crear y ejecutar comando de generación de boleta
+        # 3. Crear y ejecutar comando de generación de boleta usando patrón Builder
         receipt_command = GenerateReceiptCommand(
             movie_name=reserva.movie_name,
             showtime=reserva.showtime_string,
             seat=reserva.seat_id,
             client_name=reserva.cliente_nombre,
-            imagen=reserva.imagen
+            imagen=reserva.imagen,
+            ticket_price=reserva.costo_entrada  # Incluir el precio del boleto
         )
         
         boleta_resultado = invoker.execute_single_command(receipt_command)
