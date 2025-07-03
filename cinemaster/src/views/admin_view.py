@@ -1,10 +1,10 @@
-# admin_view.py
 import customtkinter as ctk
-from PIL import Image,ImageTk
+from PIL import Image, ImageTk
 from tkinter import ttk, messagebox
 from datetime import datetime
 import os
-import sys 
+import requests  # [NUEVO] Para hacer peticiones a la API
+import json      # [NUEVO] Para manejar errores de la API
 
 # Importar servicios de API en lugar de modelos directos
 from api.services.admin_cliente_service import ClienteAPIService
@@ -25,19 +25,17 @@ class AdminView(ctk.CTk):
         self.crear_ui()
 
     def crear_ui(self):
-        
         self.header_frame = ctk.CTkFrame(self)
         self.header_frame.pack(fill='x', padx=20, pady=10)
 
-        # Frame para el header
-        current_dir = os.path.dirname(__file__)  # Obtiene el directorio actual
-        logo_path = os.path.join(current_dir, "images", "logo.png")  # Ruta correcta
+        current_dir = os.path.dirname(__file__)
+        logo_path = os.path.join(current_dir, "images", "logo.png")
 
-        self.logo_image = Image.open(logo_path)  # Ajustamos la ruta aquí
-        self.logo_image = self.logo_image.resize((100, 100))  # Redimensionar si es necesario
+        self.logo_image = Image.open(logo_path)
+        self.logo_image = self.logo_image.resize((100, 100))
         self.logo_photo = ImageTk.PhotoImage(self.logo_image)
 
-        self.logo_label = ctk.CTkLabel(self.header_frame, image=self.logo_photo, text="")  # Corregido para evitar texto
+        self.logo_label = ctk.CTkLabel(self.header_frame, image=self.logo_photo, text="")
         self.logo_label.pack(side="left", padx=10)
 
         self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
@@ -123,11 +121,13 @@ class AdminView(ctk.CTk):
             self.boton_actualizar_empleado.pack_forget()
 
     def guardar_empleado(self):
-        nombre = self.entry_empleado_nombre.get()
-        email = self.entry_empleado_email.get()
-        password = self.entry_empleado_password.get()
-        if not (nombre and email):
-            self.agregar_a_historial("Complete todos los campos.")
+        data = {
+            "Name": self.entry_empleado_nombre.get(),
+            "Email": self.entry_empleado_email.get(),
+            "Password": self.entry_empleado_password.get()
+        }
+        if not (data["Name"] and data["Email"] and data["Password"]):
+            self.agregar_a_historial("Error: Todos los campos son requeridos.")
             return
         resultado = self.empleado_service.crear_empleado(nombre, email, password)
         if resultado:
@@ -145,24 +145,19 @@ class AdminView(ctk.CTk):
             self.tree_empleados.insert("", "end", values=(emp["employee_id"], emp["Name"], emp["Email"]))
         self.agregar_a_historial("Listado de empleados actualizado.")
 
-
     def form_actualizar_empleado(self):
         item = self.tree_empleados.focus()
         if not item:
-            self.agregar_a_historial("Selecciona un empleado.")
+            self.agregar_a_historial("Selecciona un empleado para actualizar.")
             return
         emp_id, nombre, email = self.tree_empleados.item(item)["values"]
-        self.entry_empleado_nombre.delete(0, "end")
-        self.entry_empleado_email.delete(0, "end")
+        self.entry_empleado_nombre.delete(0, "end"); self.entry_empleado_nombre.insert(0, nombre)
+        self.entry_empleado_email.delete(0, "end"); self.entry_empleado_email.insert(0, email)
         self.entry_empleado_password.delete(0, "end")
-        self.entry_empleado_nombre.insert(0, nombre)
-        self.entry_empleado_email.insert(0, email)
+        self.entry_empleado_password.configure(placeholder_text="Nueva contraseña (opcional)")
 
-        if hasattr(self, 'boton_guardar_empleado'):
-            self.boton_guardar_empleado.pack_forget()
-
-        if hasattr(self, 'boton_actualizar_empleado'):
-            self.boton_actualizar_empleado.destroy()
+        if hasattr(self, 'boton_guardar_empleado'): self.boton_guardar_empleado.pack_forget()
+        if hasattr(self, 'boton_actualizar_empleado'): self.boton_actualizar_empleado.destroy()
 
         def actualizar():
             nombre = self.entry_empleado_nombre.get()
@@ -181,11 +176,10 @@ class AdminView(ctk.CTk):
         self.boton_actualizar_empleado.pack(pady=5)
         self.form_empleado_frame.pack(pady=10)
 
-
     def eliminar_empleado(self):
         item = self.tree_empleados.focus()
         if not item:
-            self.agregar_a_historial("Selecciona un empleado.")
+            self.agregar_a_historial("Selecciona un empleado para eliminar.")
             return
         emp_id = self.tree_empleados.item(item)["values"][0]
         if messagebox.askyesno("Confirmar", f"¿Eliminar empleado ID {emp_id}?"):
@@ -261,7 +255,7 @@ class AdminView(ctk.CTk):
         ctk.CTkButton(btn_frame, text="Cancelar", command=cancelar).pack(side="left", padx=10)
 
     # ============================ CLIENTES ============================
-    
+
     def configurar_vistas_clientes(self):
         frame = ctk.CTkFrame(self.frame_vistas)
         self.vistas["clientes"] = frame
@@ -302,11 +296,13 @@ class AdminView(ctk.CTk):
             self.boton_actualizar_cliente.pack_forget()
 
     def guardar_cliente(self):
-        nombre = self.entry_cliente_nombre.get()
-        email = self.entry_cliente_email.get()
-        password = self.entry_cliente_password.get()
-        if not (nombre and email):
-            self.agregar_a_historial("Complete todos los campos.")
+        data = {
+            "nombre": self.entry_cliente_nombre.get(),
+            "Email": self.entry_cliente_email.get(),
+            "Password": self.entry_cliente_password.get()
+        }
+        if not (data["nombre"] and data["Email"] and data["Password"]):
+            self.agregar_a_historial("Error: Todos los campos son requeridos.")
             return
         resultado = self.cliente_service.crear_cliente(nombre, email, password)
         if resultado:
@@ -327,20 +323,16 @@ class AdminView(ctk.CTk):
     def form_actualizar_cliente(self):
         item = self.tree_clientes.focus()
         if not item:
-            self.agregar_a_historial("Selecciona un cliente.")
+            self.agregar_a_historial("Selecciona un cliente para actualizar.")
             return
         cl_id, nombre, email, _ = self.tree_clientes.item(item)["values"]
-        self.entry_cliente_nombre.delete(0, "end")
-        self.entry_cliente_email.delete(0, "end")
+        self.entry_cliente_nombre.delete(0, "end"); self.entry_cliente_nombre.insert(0, nombre)
+        self.entry_cliente_email.delete(0, "end"); self.entry_cliente_email.insert(0, email)
         self.entry_cliente_password.delete(0, "end")
-        self.entry_cliente_nombre.insert(0, nombre)
-        self.entry_cliente_email.insert(0, email)
+        self.entry_cliente_password.configure(placeholder_text="Nueva contraseña (opcional)")
 
-        if hasattr(self, 'boton_guardar_cliente'):
-            self.boton_guardar_cliente.pack_forget()
-
-        if hasattr(self, 'boton_actualizar_cliente'):
-            self.boton_actualizar_cliente.destroy()
+        if hasattr(self, 'boton_guardar_cliente'): self.boton_guardar_cliente.pack_forget()
+        if hasattr(self, 'boton_actualizar_cliente'): self.boton_actualizar_cliente.destroy()
 
         def actualizar():
             nombre = self.entry_cliente_nombre.get()
@@ -362,7 +354,7 @@ class AdminView(ctk.CTk):
     def eliminar_cliente(self):
         item = self.tree_clientes.focus()
         if not item:
-            self.agregar_a_historial("Selecciona un cliente.")
+            self.agregar_a_historial("Selecciona un cliente para eliminar.")
             return
         cl_id = self.tree_clientes.item(item)["values"][0]
         if messagebox.askyesno("Confirmar", f"¿Eliminar cliente ID {cl_id}?"):
@@ -436,4 +428,3 @@ class AdminView(ctk.CTk):
         
         ctk.CTkButton(btn_frame, text="Clonar", command=ejecutar_clonado).pack(side="left", padx=10)
         ctk.CTkButton(btn_frame, text="Cancelar", command=cancelar).pack(side="left", padx=10)
-

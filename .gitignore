@@ -97,7 +97,6 @@ config.ini
 # FastAPI specific
 .pytest_cache/
 
-
 #pycache
 cinemaster/src/views/reservations/__pycache__
 cinemaster/src/views/__pycache__

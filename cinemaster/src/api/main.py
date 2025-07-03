@@ -46,6 +46,9 @@ app.include_router(peliculas_router)
 app.include_router(reservas_router)
 app.include_router(funciones_router)
 
+# ---- MODIFICACIÓN AQUÍ ----
+app.include_router(api_profile_router.router) # [NUEVO] Se registra el router para que las rutas /profile/... funcionen
+app.include_router(api_admin_router.router)   # [ADMIN] Se registra el router para que las rutas /admin/... funcionen
 
 @app.get("/")
 async def root():
