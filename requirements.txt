@@ -11,8 +11,14 @@ SQLAlchemy==2.0.25
 fastapi==0.115.12
 uvicorn==0.34.3
 
+# HTTP Client
+requests==2.31.0
+
 # Manejo de imágenes
 Pillow==10.1.0
 
 # PDF Generation  
 reportlab==4.0.7
+
+# Calendario
+tkcalendar==1.6.1

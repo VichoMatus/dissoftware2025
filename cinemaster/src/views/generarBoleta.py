@@ -3,7 +3,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from datetime import datetime
-from tkinter import messagebox
 from utils.decorators import medir_tiempo
 
 class generarBoleta:
@@ -45,11 +44,9 @@ class generarBoleta:
 
             c.save()
             print(f"PDF guardado en: {ruta_pdf}")
-            messagebox.showinfo("Boleta generada", f"Boleta guardada en: {ruta_pdf}")
 
         except Exception as e:
             print(f"Error generando PDF: {e}")
-            messagebox.showerror("Error", f"No se pudo generar la boleta PDF: {e}")
 
     def generate_receipt(self, ruta_pdf_completa):
         self.crear_pdf(ruta_pdf_completa)
