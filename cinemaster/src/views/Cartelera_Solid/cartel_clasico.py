@@ -5,13 +5,31 @@ import os
 
 class CartelClasico(CartelBase):
     def create_widgets(self):
-        image_path = self.pelicula.Image_path if self.pelicula.Image_path else os.path.abspath("cinemaster/src/views/images/default.jpg")
+        # Debug para ver qué llega
+        print(f"🔍 Imagen para '{self.pelicula.Title}': {self.pelicula.Image_path}")
+        
+        # Usar la ruta original si existe, sino usar default
+        if self.pelicula.Image_path:
+            image_path = self.pelicula.Image_path
+        else:
+            image_path = "cinemaster/src/views/images/default.jpg"
+        
         try:
             pil_image = Image.open(image_path)
             pil_image = pil_image.resize((160, 160))
             self.img = ImageTk.PhotoImage(pil_image)
-        except:
-            self.img = ImageTk.PhotoImage(Image.open("cinemaster/src/views/images/default.jpg").resize((160, 160)))
+            print(f"✅ Imagen cargada: {image_path}")
+        except Exception as e:
+            print(f"❌ Error cargando {image_path}: {e}")
+            # Fallback a default
+            try:
+                self.img = ImageTk.PhotoImage(Image.open("cinemaster/src/views/images/default.jpg").resize((160, 160)))
+                print(f"✅ Imagen default cargada")
+            except Exception as e2:
+                print(f"❌ Error cargando default: {e2}")
+                # Crear imagen vacía como último recurso
+                pil_image = Image.new('RGB', (160, 160), color='gray')
+                self.img = ImageTk.PhotoImage(pil_image)
 
         image_label = ctk.CTkLabel(self, image=self.img, text="")
         image_label.image = self.img

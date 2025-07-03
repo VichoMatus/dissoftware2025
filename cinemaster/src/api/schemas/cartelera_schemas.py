@@ -7,12 +7,7 @@ class PeliculaResponse(BaseModel):
     titulo: str
     genero: Optional[str] = None
     duracion: Optional[int] = None
-    clasificacion: Optional[str] = None
-    sinopsis: Optional[str] = None
-    director: Optional[str] = None
-    actores: Optional[str] = None
-    fecha_estreno: Optional[str] = None
-    precio: Optional[float] = None
+    image_path: Optional[str] 
 
 class HorarioResponse(BaseModel):
     horario_id: int
