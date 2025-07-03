@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.database import Funcion
+import requests
 
 class FuncionService:
     @staticmethod
@@ -37,3 +38,42 @@ class FuncionService:
             db.commit()
             return True
         return False
+
+class FuncionAPIService:
+    API_URL = "http://127.0.0.1:8000/funciones/"
+
+    def listar_funciones(self):
+        response = requests.get(self.API_URL)
+        response.raise_for_status()
+        return response.json()
+
+    def obtener_peliculas_disponibles(self):
+        """Obtiene lista de películas disponibles para dropdowns"""
+        response = requests.get(f"{self.API_URL}peliculas-disponibles")
+        response.raise_for_status()
+        return response.json()
+
+    def crear_funcion(self, id_pelicula, employee_id, Schedule):
+        data = {
+            "id_pelicula": id_pelicula,
+            "employee_id": employee_id,
+            "Schedule": Schedule  # Debe ser string en formato ISO (ej: "2024-07-01T20:00:00")
+        }
+        response = requests.post(self.API_URL, json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def actualizar_funcion(self, id_funcion, id_pelicula, employee_id, Schedule):
+        data = {
+            "id_pelicula": id_pelicula,
+            "employee_id": employee_id,
+            "Schedule": Schedule
+        }
+        response = requests.put(f"{self.API_URL}{id_funcion}", json=data)
+        response.raise_for_status()
+        return response.json()
+
+    def eliminar_funcion(self, id_funcion):
+        response = requests.delete(f"{self.API_URL}{id_funcion}")
+        response.raise_for_status()
+        return response.json()
