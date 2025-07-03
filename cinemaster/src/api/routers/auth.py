@@ -1,27 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from models.auth_controller import AuthController
-from models.database import SessionLocal
+from sqlalchemy import text
+from api.schemas.auth_schemas import (
+    LoginRequest, 
+    LoginResponse, 
+    RegisterRequest, 
+    RegisterResponse
+)
+from api.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-class LoginResponse(BaseModel):
-    success: bool
-    message: str
-    user_type: str = None
-    user_data: dict = None
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
@@ -39,7 +27,10 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             )
         
         # Intentar login como cliente
-        cliente = AuthController.login_cliente(db, email, password)
+        query_cliente = text("SELECT cliente_id, nombre, Email, Membership FROM Cliente WHERE Email = :email AND Password = :password")
+        result = db.execute(query_cliente, {"email": email, "password": password})
+        cliente = result.fetchone()
+        
         if cliente:
             return LoginResponse(
                 success=True,
@@ -49,12 +40,15 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
                     "id": cliente.cliente_id,
                     "nombre": cliente.nombre,
                     "email": cliente.Email,
-                    "membership": cliente.Membership
+                    "membership": bool(cliente.Membership)
                 }
             )
         
         # Intentar login como empleado
-        empleado = AuthController.login_empleado(db, email, password)
+        query_empleado = text("SELECT employee_id, Name, Email FROM Empleado WHERE Email = :email AND Password = :password")
+        result = db.execute(query_empleado, {"email": email, "password": password})
+        empleado = result.fetchone()
+        
         if empleado:
             return LoginResponse(
                 success=True,
@@ -68,7 +62,10 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             )
         
         # Intentar login como administrador
-        admin = AuthController.login_admin(db, email, password)
+        query_admin = text("SELECT Admin_id, nombre, Email FROM Admin WHERE Email = :email AND Password = :password")
+        result = db.execute(query_admin, {"email": email, "password": password})
+        admin = result.fetchone()
+        
         if admin:
             return LoginResponse(
                 success=True,
@@ -95,8 +92,8 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail=f"Error interno del servidor: {str(e)}"
         )
 
-@router.post("/register", response_model=dict)
-async def register(request: LoginRequest, db: Session = Depends(get_db)):
+@router.post("/register", response_model=RegisterResponse)
+async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     """
     Endpoint para registrar nuevos clientes
     """
@@ -116,24 +113,54 @@ async def register(request: LoginRequest, db: Session = Depends(get_db)):
                 detail="La contraseña debe tener al menos 4 caracteres"
             )
         
+        # Verificar si el email ya existe
+        query_existe = text("SELECT cliente_id FROM Cliente WHERE Email = :email")
+        result = db.execute(query_existe, {"email": email})
+        cliente_existente = result.fetchone()
+        
+        if cliente_existente:
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un cliente con ese email"
+            )
+        
         # Por ahora usamos el email como nombre, se puede modificar después
-        nombre = email.split("@")[0]
+        nombre = request.nombre if request.nombre else email.split("@")[0]
         
-        cliente = AuthController.register_cliente(db, nombre, email, password, False)
+        # Crear nuevo cliente
+        query_crear = text("""
+            INSERT INTO Cliente (nombre, Email, Password, Membership, Reservation_history)
+            VALUES (:nombre, :email, :password, :membership, :history)
+        """)
         
-        return {
-            "success": True,
-            "message": f"Cliente {cliente.nombre} registrado exitosamente!",
-            "cliente": {
+        result = db.execute(query_crear, {
+            "nombre": nombre,
+            "email": email,
+            "password": password,
+            "membership": False,
+            "history": ""
+        })
+        db.commit()
+        
+        # Obtener el cliente creado
+        cliente_id = result.lastrowid
+        query_cliente = text("SELECT cliente_id, nombre, Email, Membership FROM Cliente WHERE cliente_id = :id")
+        result = db.execute(query_cliente, {"id": cliente_id})
+        cliente = result.fetchone()
+        
+        return RegisterResponse(
+            success=True,
+            message=f"Cliente {cliente.nombre} registrado exitosamente!",
+            cliente={
                 "id": cliente.cliente_id,
                 "nombre": cliente.nombre,
                 "email": cliente.Email,
-                "membership": cliente.Membership
+                "membership": bool(cliente.Membership)
             }
-        }
+        )
         
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,

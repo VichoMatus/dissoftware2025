@@ -6,8 +6,10 @@ import os
 import requests  # [NUEVO] Para hacer peticiones a la API
 import json      # [NUEVO] Para manejar errores de la API
 
-# [NUEVO] Constante para la URL base de la API
-API_BASE_URL = "http://127.0.0.1:8000"
+# Importar servicios de API en lugar de modelos directos
+from api.services.admin_cliente_service import ClienteAPIService
+from api.services.admin_empleado_service import EmpleadoAPIService 
+
 
 class AdminView(ctk.CTk):
     def __init__(self):
@@ -15,6 +17,11 @@ class AdminView(ctk.CTk):
         self.title("Sistema de Gestión de Empleados y Clientes")
         self.geometry("1280x720")
         self.vistas = {}
+        
+        # Inicializar servicios API
+        self.cliente_service = ClienteAPIService()
+        self.empleado_service = EmpleadoAPIService()
+        
         self.crear_ui()
 
     def crear_ui(self):
@@ -90,6 +97,7 @@ class AdminView(ctk.CTk):
         ctk.CTkButton(action_frame, text="Agregar Empleado", command=self.form_empleado).pack(side="left", padx=10)
         ctk.CTkButton(action_frame, text="Actualizar Empleado", command=self.form_actualizar_empleado).pack(side="left", padx=10)
         ctk.CTkButton(action_frame, text="Eliminar Empleado", fg_color="red", hover_color="#b71c1c", command=self.eliminar_empleado).pack(side="left", padx=10)
+        ctk.CTkButton(action_frame, text="Clonar Empleado", command=self.clonar_empleado_seleccionado).pack(side="left", padx=10)
 
         self.form_empleado_frame = ctk.CTkFrame(frame)
         self.entry_empleado_nombre = ctk.CTkEntry(self.form_empleado_frame, placeholder_text="Nombre")
@@ -121,31 +129,21 @@ class AdminView(ctk.CTk):
         if not (data["Name"] and data["Email"] and data["Password"]):
             self.agregar_a_historial("Error: Todos los campos son requeridos.")
             return
-
-        try:
-            response = requests.post(f"{API_BASE_URL}/admin/employees/", json=data)
-            if response.status_code == 201:
-                self.agregar_a_historial(f"Empleado '{data['Name']}' agregado con éxito.")
-                self.mostrar_empleados()
-                self.form_empleado_frame.pack_forget()
-            else:
-                self.agregar_a_historial(f"Error al crear empleado: {response.json().get('detail', response.text)}")
-        except requests.exceptions.RequestException as e:
-            self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        resultado = self.empleado_service.crear_empleado(nombre, email, password)
+        if resultado:
+            self.agregar_a_historial(f"Empleado '{nombre}' agregado con ID {resultado['employee_id']}.")
+            self.mostrar_empleados()
+            self.form_empleado_frame.pack_forget()
+        else:
+            self.agregar_a_historial("Error al crear empleado.")
 
     def mostrar_empleados(self):
         for i in self.tree_empleados.get_children():
             self.tree_empleados.delete(i)
-        try:
-            response = requests.get(f"{API_BASE_URL}/admin/employees/")
-            if response.ok:
-                for emp in response.json():
-                    self.tree_empleados.insert("", "end", values=(emp["employee_id"], emp["Name"], emp["Email"]))
-                self.agregar_a_historial("Listado de empleados actualizado.")
-            else:
-                self.agregar_a_historial("Error al cargar empleados desde la API.")
-        except requests.exceptions.RequestException as e:
-            self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        empleados = self.empleado_service.obtener_empleados()
+        for emp in empleados:
+            self.tree_empleados.insert("", "end", values=(emp["employee_id"], emp["Name"], emp["Email"]))
+        self.agregar_a_historial("Listado de empleados actualizado.")
 
     def form_actualizar_empleado(self):
         item = self.tree_empleados.focus()
@@ -162,23 +160,17 @@ class AdminView(ctk.CTk):
         if hasattr(self, 'boton_actualizar_empleado'): self.boton_actualizar_empleado.destroy()
 
         def actualizar():
-            data = {
-                "Name": self.entry_empleado_nombre.get(),
-                "Email": self.entry_empleado_email.get()
-            }
+            nombre = self.entry_empleado_nombre.get()
+            email = self.entry_empleado_email.get()
             password = self.entry_empleado_password.get()
-            if password: data["Password"] = password
-
-            try:
-                response = requests.put(f"{API_BASE_URL}/admin/employees/{emp_id}", json=data)
-                if response.ok:
-                    self.agregar_a_historial(f"Empleado ID {emp_id} actualizado.")
-                    self.mostrar_empleados()
-                    self.form_empleado_frame.pack_forget()
-                else:
-                    self.agregar_a_historial(f"Error al actualizar: {response.json().get('detail', response.text)}")
-            except requests.exceptions.RequestException as e:
-                self.agregar_a_historial(f"Error de conexión con la API: {e}")
+            
+            resultado = self.empleado_service.actualizar_empleado(emp_id, nombre, email, password)
+            if resultado:
+                self.agregar_a_historial(f"Empleado ID {emp_id} actualizado.")
+                self.mostrar_empleados()
+                self.form_empleado_frame.pack_forget()
+            else:
+                self.agregar_a_historial("Error al actualizar empleado.")
 
         self.boton_actualizar_empleado = ctk.CTkButton(self.form_empleado_frame, text="Actualizar", command=actualizar)
         self.boton_actualizar_empleado.pack(pady=5)
@@ -190,16 +182,77 @@ class AdminView(ctk.CTk):
             self.agregar_a_historial("Selecciona un empleado para eliminar.")
             return
         emp_id = self.tree_empleados.item(item)["values"][0]
-        if messagebox.askyesno("Confirmar", f"¿Realmente desea eliminar al empleado ID {emp_id}?"):
-            try:
-                response = requests.delete(f"{API_BASE_URL}/admin/employees/{emp_id}")
-                if response.status_code == 204:
-                    self.agregar_a_historial(f"Empleado ID {emp_id} eliminado.")
-                    self.mostrar_empleados()
-                else:
-                    self.agregar_a_historial(f"Error al eliminar: {response.json().get('detail', response.text)}")
-            except requests.exceptions.RequestException as e:
-                self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        if messagebox.askyesno("Confirmar", f"¿Eliminar empleado ID {emp_id}?"):
+            if self.empleado_service.eliminar_empleado(emp_id):
+                self.agregar_a_historial(f"Empleado ID {emp_id} eliminado.")
+                self.mostrar_empleados()
+            else:
+                self.agregar_a_historial("Error al eliminar empleado.")
+
+    def clonar_empleado_seleccionado(self):
+        item = self.tree_empleados.focus()
+        if not item:
+            self.agregar_a_historial("No hay empleado seleccionado para clonar.")
+            return
+        empleado_id = self.tree_empleados.item(item)["values"][0]
+        
+        # Obtener datos del empleado original
+        empleado_original = self.empleado_service.obtener_empleado(empleado_id)
+        if not empleado_original:
+            self.agregar_a_historial(f"No se encontró empleado con ID {empleado_id}.")
+            return
+        
+        # Crear diálogo para nuevos datos
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Clonar Empleado - Nuevos Datos")
+        dialog.geometry("400x300")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        ctk.CTkLabel(dialog, text=f"Clonando: {empleado_original['Name']}", font=("Arial", 14, "bold")).pack(pady=10)
+        ctk.CTkLabel(dialog, text="Ingrese los nuevos datos:", font=("Arial", 12)).pack(pady=5)
+        
+        # Campos para nuevos datos
+        ctk.CTkLabel(dialog, text="Nuevo Nombre:").pack(pady=5)
+        entry_nuevo_nombre = ctk.CTkEntry(dialog, width=300)
+        entry_nuevo_nombre.pack(pady=5)
+        entry_nuevo_nombre.insert(0, empleado_original['Name'] + "_clone")
+        
+        ctk.CTkLabel(dialog, text="Nuevo Email:").pack(pady=5)
+        entry_nuevo_email = ctk.CTkEntry(dialog, width=300)
+        entry_nuevo_email.pack(pady=5)
+        
+        ctk.CTkLabel(dialog, text="Nueva Contraseña:").pack(pady=5)
+        entry_nueva_password = ctk.CTkEntry(dialog, width=300, show="*")
+        entry_nueva_password.pack(pady=5)
+        
+        def ejecutar_clonado():
+            nuevo_nombre = entry_nuevo_nombre.get()
+            nuevo_email = entry_nuevo_email.get()
+            nueva_password = entry_nueva_password.get()
+            
+            if not (nuevo_nombre and nuevo_email and nueva_password):
+                messagebox.showerror("Error", "Todos los campos son obligatorios")
+                return
+            
+            # Usar el patrón Prototype via API
+            resultado = self.empleado_service.clonar_empleado(empleado_id, nuevo_nombre, nuevo_email, nueva_password)
+            if resultado:
+                self.agregar_a_historial(f"Empleado clonado exitosamente con ID {resultado['employee_id']}.")
+                self.mostrar_empleados()
+                dialog.destroy()
+            else:
+                messagebox.showerror("Error", "Error al clonar empleado. Verifique que el email no exista.")
+        
+        def cancelar():
+            dialog.destroy()
+        
+        # Botones
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=20)
+        
+        ctk.CTkButton(btn_frame, text="Clonar", command=ejecutar_clonado).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancelar", command=cancelar).pack(side="left", padx=10)
 
     # ============================ CLIENTES ============================
 
@@ -251,31 +304,21 @@ class AdminView(ctk.CTk):
         if not (data["nombre"] and data["Email"] and data["Password"]):
             self.agregar_a_historial("Error: Todos los campos son requeridos.")
             return
-
-        try:
-            response = requests.post(f"{API_BASE_URL}/admin/clients/", json=data)
-            if response.status_code == 201:
-                self.agregar_a_historial(f"Cliente '{data['nombre']}' agregado con éxito.")
-                self.mostrar_clientes()
-                self.form_cliente_frame.pack_forget()
-            else:
-                self.agregar_a_historial(f"Error al crear cliente: {response.json().get('detail', response.text)}")
-        except requests.exceptions.RequestException as e:
-            self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        resultado = self.cliente_service.crear_cliente(nombre, email, password)
+        if resultado:
+            self.agregar_a_historial(f"Cliente '{nombre}' agregado con ID {resultado['cliente_id']}.")
+            self.mostrar_clientes()
+            self.form_cliente_frame.pack_forget()
+        else:
+            self.agregar_a_historial("Error al crear cliente.")
 
     def mostrar_clientes(self):
         for i in self.tree_clientes.get_children():
             self.tree_clientes.delete(i)
-        try:
-            response = requests.get(f"{API_BASE_URL}/admin/clients/")
-            if response.ok:
-                for cl in response.json():
-                    self.tree_clientes.insert("", "end", values=(cl["cliente_id"], cl["nombre"], cl["Email"], "Sí" if cl["Membership"] else "No"))
-                self.agregar_a_historial("Listado de clientes actualizado.")
-            else:
-                self.agregar_a_historial("Error al cargar clientes desde la API.")
-        except requests.exceptions.RequestException as e:
-            self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        clientes = self.cliente_service.obtener_clientes()
+        for cl in clientes:
+            self.tree_clientes.insert("", "end", values=(cl["cliente_id"], cl["nombre"], cl["Email"], "Sí" if cl["Membership"] else "No"))
+        self.agregar_a_historial("Listado de clientes actualizado.")
 
     def form_actualizar_cliente(self):
         item = self.tree_clientes.focus()
@@ -292,20 +335,17 @@ class AdminView(ctk.CTk):
         if hasattr(self, 'boton_actualizar_cliente'): self.boton_actualizar_cliente.destroy()
 
         def actualizar():
-            data = {"nombre": self.entry_cliente_nombre.get(), "Email": self.entry_cliente_email.get()}
+            nombre = self.entry_cliente_nombre.get()
+            email = self.entry_cliente_email.get()
             password = self.entry_cliente_password.get()
-            if password: data["Password"] = password
             
-            try:
-                response = requests.put(f"{API_BASE_URL}/admin/clients/{cl_id}", json=data)
-                if response.ok:
-                    self.agregar_a_historial(f"Cliente ID {cl_id} actualizado.")
-                    self.mostrar_clientes()
-                    self.form_cliente_frame.pack_forget()
-                else:
-                    self.agregar_a_historial(f"Error al actualizar: {response.json().get('detail', response.text)}")
-            except requests.exceptions.RequestException as e:
-                self.agregar_a_historial(f"Error de conexión con la API: {e}")
+            resultado = self.cliente_service.actualizar_cliente(cl_id, nombre, email, password)
+            if resultado:
+                self.agregar_a_historial(f"Cliente ID {cl_id} actualizado.")
+                self.mostrar_clientes()
+                self.form_cliente_frame.pack_forget()
+            else:
+                self.agregar_a_historial("Error al actualizar cliente.")
 
         self.boton_actualizar_cliente = ctk.CTkButton(self.form_cliente_frame, text="Actualizar", command=actualizar)
         self.boton_actualizar_cliente.pack(pady=5)
@@ -317,16 +357,12 @@ class AdminView(ctk.CTk):
             self.agregar_a_historial("Selecciona un cliente para eliminar.")
             return
         cl_id = self.tree_clientes.item(item)["values"][0]
-        if messagebox.askyesno("Confirmar", f"¿Realmente desea eliminar al cliente ID {cl_id}?"):
-            try:
-                response = requests.delete(f"{API_BASE_URL}/admin/clients/{cl_id}")
-                if response.status_code == 204:
-                    self.agregar_a_historial(f"Cliente ID {cl_id} eliminado.")
-                    self.mostrar_clientes()
-                else:
-                    self.agregar_a_historial(f"Error al eliminar: {response.json().get('detail', response.text)}")
-            except requests.exceptions.RequestException as e:
-                self.agregar_a_historial(f"Error de conexión con la API: {e}")
+        if messagebox.askyesno("Confirmar", f"¿Eliminar cliente ID {cl_id}?"):
+            if self.cliente_service.eliminar_cliente(cl_id):
+                self.agregar_a_historial(f"Cliente ID {cl_id} eliminado.")
+                self.mostrar_clientes()
+            else:
+                self.agregar_a_historial("Error al eliminar cliente.")
 
     def clonar_cliente_seleccionado(self):
         item = self.tree_clientes.focus()
@@ -334,16 +370,61 @@ class AdminView(ctk.CTk):
             self.agregar_a_historial("No hay cliente seleccionado para clonar.")
             return
         cliente_id = self.tree_clientes.item(item)["values"][0]
-        try:
-            response = requests.post(f"{API_BASE_URL}/admin/clients/clone/{cliente_id}")
-            if response.ok:
-                cloned_data = response.json()
-                self.form_cliente()
-                self.entry_cliente_nombre.insert(0, cloned_data.get('nombre', ''))
-                self.entry_cliente_email.insert(0, '') # Dejar vacío para el nuevo clon
-                self.entry_cliente_password.insert(0, '')
-                self.agregar_a_historial(f"Datos del cliente ID {cliente_id} clonados. Rellene y guarde.")
+        
+        # Obtener datos del cliente original
+        cliente_original = self.cliente_service.obtener_cliente(cliente_id)
+        if not cliente_original:
+            self.agregar_a_historial(f"No se encontró cliente con ID {cliente_id}.")
+            return
+        
+        # Crear diálogo para nuevos datos
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Clonar Cliente - Nuevos Datos")
+        dialog.geometry("400x300")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        ctk.CTkLabel(dialog, text=f"Clonando: {cliente_original['nombre']}", font=("Arial", 14, "bold")).pack(pady=10)
+        ctk.CTkLabel(dialog, text="Ingrese los nuevos datos:", font=("Arial", 12)).pack(pady=5)
+        
+        # Campos para nuevos datos
+        ctk.CTkLabel(dialog, text="Nuevo Nombre:").pack(pady=5)
+        entry_nuevo_nombre = ctk.CTkEntry(dialog, width=300)
+        entry_nuevo_nombre.pack(pady=5)
+        entry_nuevo_nombre.insert(0, cliente_original['nombre'] + "_clone")
+        
+        ctk.CTkLabel(dialog, text="Nuevo Email:").pack(pady=5)
+        entry_nuevo_email = ctk.CTkEntry(dialog, width=300)
+        entry_nuevo_email.pack(pady=5)
+        
+        ctk.CTkLabel(dialog, text="Nueva Contraseña:").pack(pady=5)
+        entry_nueva_password = ctk.CTkEntry(dialog, width=300, show="*")
+        entry_nueva_password.pack(pady=5)
+        
+        def ejecutar_clonado():
+            nuevo_nombre = entry_nuevo_nombre.get()
+            nuevo_email = entry_nuevo_email.get()
+            nueva_password = entry_nueva_password.get()
+            
+            if not (nuevo_nombre and nuevo_email and nueva_password):
+                messagebox.showerror("Error", "Todos los campos son obligatorios")
+                return
+            
+            # Usar el patrón Prototype via API
+            resultado = self.cliente_service.clonar_cliente(cliente_id, nuevo_nombre, nuevo_email, nueva_password)
+            if resultado:
+                self.agregar_a_historial(f"Cliente clonado exitosamente con ID {resultado['cliente_id']}.")
+                self.mostrar_clientes()
+                dialog.destroy()
             else:
-                self.agregar_a_historial(f"Error al clonar: {response.json().get('detail', response.text)}")
-        except requests.exceptions.RequestException as e:
-            self.agregar_a_historial(f"Error de conexión con la API: {e}")
+                messagebox.showerror("Error", "Error al clonar cliente. Verifique que el email no exista.")
+        
+        def cancelar():
+            dialog.destroy()
+        
+        # Botones
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=20)
+        
+        ctk.CTkButton(btn_frame, text="Clonar", command=ejecutar_clonado).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancelar", command=cancelar).pack(side="left", padx=10)

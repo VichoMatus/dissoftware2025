@@ -1,27 +1,26 @@
 from fastapi import FastAPI
 import uvicorn
 import threading
-import webbrowser
 import time
 from api.trabajador_api.clientes_api import router as clientes_router
 from api.trabajador_api.peliculas_api import router as peliculas_router
 from api.trabajador_api.reservas_api import router as reservas_router
 from api.trabajador_api.funciones_api import router as funciones_router
-from api.trabajador_api.promociones_api import router as promociones_router
+from api.routers import cartelera
+from api.routers import reservas
+from .routers import dashboard
+from api.routers import dashboard
+
 
 # Importar routers
 try:
-    # ---- MODIFICACIÓN AQUÍ ----
-    from .routers import login, auth, dashboard, api_profile_router # [NUEVO] Se añade el router del perfil
-    from .routers import api_admin_router # [ADMIN] Se añade el router del admin
+    from .routers import login, auth, clientes, empleados
 except ImportError:
     # Fallback para importación absoluta cuando se ejecuta directamente
     import sys
     import os
     sys.path.append(os.path.dirname(__file__))
-    # ---- MODIFICACIÓN AQUÍ ----
-    from routers import login, auth, dashboard, api_profile_router # [NUEVO] Se añade el router del perfil
-    from routers import api_admin_router # [ADMIN] Se añade el router del admin
+    from routers import login, auth, clientes, empleados
 
 # Crear la instancia de FastAPI
 app = FastAPI(
@@ -34,17 +33,22 @@ app = FastAPI(
 app.include_router(login.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
+app.include_router(cartelera.router)
+app.include_router(reservas.router)
 
+# Routers para admin/trabajador con funcionalidad de clonado
+app.include_router(clientes.router, prefix="/api", tags=["clientes"])
+app.include_router(empleados.router, prefix="/api", tags=["empleados"])
+
+# Routers de trabajador API (legacy)
 app.include_router(clientes_router)
 app.include_router(peliculas_router)
 app.include_router(reservas_router)
 app.include_router(funciones_router)
-app.include_router(promociones_router)
 
 # ---- MODIFICACIÓN AQUÍ ----
 app.include_router(api_profile_router.router) # [NUEVO] Se registra el router para que las rutas /profile/... funcionen
 app.include_router(api_admin_router.router)   # [ADMIN] Se registra el router para que las rutas /admin/... funcionen
-
 
 @app.get("/")
 async def root():
@@ -64,29 +68,25 @@ def start_api_in_thread():
     api_thread.start()
     return api_thread
 
+# --- El navegador ya NO se abrirá automáticamente ---
+# (Dejo la función por si la quieres en desarrollo, pero no se llama abajo)
 def open_browser_delayed():
-    """Abre el navegador después de un pequeño delay para asegurar que la API esté lista"""
-    time.sleep(2)  # Esperar 2 segundos para que la API esté lista
+    import webbrowser
+    time.sleep(2)
     webbrowser.open("http://127.0.0.1:8000/login/")
 
 def start_api_with_browser():
-    """Inicia la API y abre el navegador automáticamente"""
-    # Iniciar API en hilo separado
     api_thread = start_api_in_thread()
-    
-    # Abrir navegador en otro hilo
     browser_thread = threading.Thread(target=open_browser_delayed, daemon=True)
     browser_thread.start()
-    
     return api_thread
 
 if __name__ == "__main__":
-    # Si se ejecuta directamente, iniciar la API y abrir navegador
-    print(" Iniciando CineMaster API...")
-    print(" La página de bienvenida se abrirá automáticamente en tu navegador")
-    start_api_with_browser()
-    
-    # Mantener el programa principal ejecutándose
+    print("🚀 Iniciando CineMaster API...")
+    start_api()  # <-- Solo inicia la API en modo backend puro
+
+    # Mantener el programa principal ejecutándose (aunque uvicorn ya bloquea)
+    # Puedes comentar el loop si ves que no es necesario.
     try:
         while True:
             time.sleep(1)

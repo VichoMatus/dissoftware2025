@@ -1,17 +1,15 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import os
+import requests
+from datetime import datetime
+from tkinter import messagebox
 
-from models.movie import get_all_movies
-from models.database import get_db
-from models.cliente import Cliente
 from views.reservations.reservation_view import open_reservation_view
 from views.Cartelera_Solid.profile_button import ProfileButton
 from views.Cartelera_Solid.cartel_clasico import CartelClasico
 from services.booking_facade import BookingFacade
-
-# Importa el cartel clásico desde la nueva estructura OCP
-from views.Cartelera_Solid.cartel_clasico import CartelClasico
+from adapters.pelicula_adapter import PeliculaAdapter
 
 class MainView(ctk.CTk):
     def __init__(self, cliente, dashboard_logger=None):
@@ -40,12 +38,14 @@ class MainView(ctk.CTk):
         self.app_name_label = ctk.CTkLabel(self.header_frame, text="CineMaster", font=("Arial", 24, "bold"))
         self.app_name_label.pack(side="left", padx=10)
 
-        self.profile_button = ProfileButton(self.header_frame, self.cliente)        # Cartelera
+        self.profile_button = ProfileButton(self.header_frame, self.cliente)
+
+        # Cartelera
         self.cartelera_frame = ctk.CTkFrame(self, corner_radius=10)
         self.cartelera_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
-        self.db_session = next(get_db())
-        peliculas = get_all_movies(self.db_session)
+        # Obtener películas EXCLUSIVAMENTE desde la API
+        peliculas = self.get_peliculas_from_api()
 
         self.carteles = []
         for i, pelicula in enumerate(peliculas):
@@ -53,16 +53,70 @@ class MainView(ctk.CTk):
             cartel.grid(row=0, column=i, padx=20)
             self.carteles.append(cartel)
 
+    def get_peliculas_from_api(self):
+        """Obtiene las películas EXCLUSIVAMENTE desde la API"""
+        try:
+            response = requests.get("http://127.0.0.1:8000/cartelera/")
+            if response.status_code == 200:
+                peliculas_data = response.json()
+                return PeliculaAdapter.from_api_list(peliculas_data, self)
+            else:
+                print(f"❌ Error al obtener películas desde API: {response.status_code}")
+                messagebox.showerror("Error", f"No se pudieron cargar las películas desde la API. Código: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"❌ Error conectando con la API: {e}")
+            messagebox.showerror("Error de Conexión", "No se pudo conectar con la API para obtener las películas.")
+            return []
+
+    def get_horarios_from_api(self, pelicula_id):
+        """Obtiene los horarios EXCLUSIVAMENTE desde la API"""
+        try:
+            print(f"🔍 Obteniendo horarios para película ID: {pelicula_id}")
+            response = requests.get(f"http://127.0.0.1:8000/cartelera/{pelicula_id}/horarios")
+            if response.status_code == 200:
+                horarios_data = response.json()
+                print(f"✅ Recibidos {len(horarios_data)} horarios de la API")
+                horarios_with_ids = []
+                for horario in horarios_data:
+                    # La API devuelve 'horario_id', no 'id'
+                    fecha_dt = datetime.fromisoformat(horario['fecha'].replace('Z', '+00:00')) if horario['fecha'] else None
+                    horarios_with_ids.append((horario['horario_id'], fecha_dt))
+                    print(f"  - Horario ID: {horario['horario_id']}, Fecha: {fecha_dt}")
+                return horarios_with_ids
+            else:
+                print(f"❌ Error al obtener horarios desde API: {response.status_code}")
+                messagebox.showerror("Error", f"No se pudieron cargar los horarios desde la API. Código: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"❌ Error conectando con la API para horarios: {e}")
+            messagebox.showerror("Error de Conexión", "No se pudo conectar con la API para obtener los horarios.")
+            return []
+
     def reserve_movie(self, pelicula, showtimes_with_ids, cliente):
+        # Obtener horarios EXCLUSIVAMENTE desde la API y llenar pelicula.horarios
+        horarios_api = self.get_horarios_from_api(pelicula.id_pelicula)
+        
+        if not horarios_api:
+            messagebox.showerror("Error", "No se pudieron cargar los horarios para esta película.")
+            return
+        
+        # Convertir tuplas de API a objetos compatibles con CartelClasico
+        from adapters.horario_adapter import HorarioAPI
+        pelicula.horarios = [HorarioAPI(horario_id, fecha) for horario_id, fecha in horarios_api]
+        print(f"✅ Película {pelicula.Title} tiene {len(pelicula.horarios)} horarios")
+        
         # Registrar selección de película en el dashboard
         if self.dashboard_logger:
             self.dashboard_logger.log_movie_selection(
                 pelicula.Title, 
-                getattr(pelicula, 'movie_id', None)
+                getattr(pelicula, 'id_pelicula', None)
             )
         
-        reservation_system = BookingFacade()  # Instancia del sistema de reservas
+        reservation_system = BookingFacade()
         self.destroy()
         open_reservation_view(
-            pelicula.Title, pelicula.Duration, pelicula.Gender, pelicula.Image_path, showtimes_with_ids, cliente, reservation_system
+            pelicula.Title, pelicula.Duration, pelicula.Gender, pelicula.Image_path, 
+            horarios_api,  # Usar horarios EXCLUSIVAMENTE de la API
+            cliente, reservation_system
         )
