@@ -1,31 +1,51 @@
 import customtkinter as ctk
-from views.authentication.login_view import LoginView
-from views.authentication.register_view import RegisterView
-from views.cartelera_view import MainView
-from views.trabajador_view import ClienteView
-from views.admin_view import AdminView
+import threading
+from controllers.app_controller import AppController
 
+def check_api_port():
+    """Verifica si el puerto de la API está disponible"""
+    try:
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex(('127.0.0.1', 8000))
+        sock.close()
+        return result == 0
+    except:
+        return False
 
-def open_register_view():
-    app = RegisterView(open_login_view)  # Crear la ventana de registro
-    app.mainloop()
+def start_api():
+    """Inicia la API importando y ejecutando su función principal"""
+    try:
+        from api.main import start_api_in_thread
+        print("🚀 Iniciando API CineMaster...")
+        start_api_in_thread()  # Solo iniciar la API, sin abrir navegador
+    except Exception as e:
+        print(f"❌ Error al iniciar la API: {e}")
 
-def open_login_view():
-    app = LoginView(open_register_view, open_cartelera_view, open_trabajador_view,open_adimn_view)  # Crear la ventana de login
-    app.mainloop()
+# --- Eliminamos la función open_browser_after_delay y su uso ---
 
-def open_cartelera_view(cliente):
-    app = MainView(cliente)  # Llamar sin pasarle parámetros
-    app.mainloop()
-
-
-def open_trabajador_view(employee_name):
-    app = ClienteView(employee_name)
-    app.mainloop()
-
-def open_adimn_view():
-    app = AdminView()  # Cambia esto por la vista de administrador que tengas
-    app.mainloop()
+def main():
+    ctk.set_appearance_mode("dark")
+    
+    print("🎬 Iniciando CineMaster...")
+    print("🏗️  Arquitectura: Aplicación → API → Base de Datos")
+    print("=" * 50)
+    
+    # Iniciar la API en segundo plano
+    print("🚀 Iniciando CineMaster API en http://127.0.0.1:8000")
+    api_thread = threading.Thread(target=start_api, daemon=True)
+    api_thread.start()
+    print("✅ API iniciada correctamente!")
+    
+    # --- Ya NO abrimos el navegador automáticamente ---
+    
+    print("🖥️  Iniciando aplicación de escritorio...")
+    print("=" * 50)
+    
+    # Iniciar la aplicación principal
+    app_controller = AppController()
+    app_controller.start()
 
 if __name__ == "__main__":
-    open_login_view()  # Inicia la ventana de login
+    main()

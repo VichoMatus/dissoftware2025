@@ -1,0 +1,95 @@
+from fastapi import FastAPI
+import uvicorn
+import threading
+import time
+from api.trabajador_api.clientes_api import router as clientes_router
+from api.trabajador_api.peliculas_api import router as peliculas_router
+from api.trabajador_api.reservas_api import router as reservas_router
+from api.trabajador_api.funciones_api import router as funciones_router
+from api.routers import cartelera
+from api.routers import reservas
+from .routers import dashboard
+from api.routers import dashboard
+from .routers import api_profile_router
+from .routers import api_admin_router
+
+# Importar routers
+try:
+    from .routers import login, auth, clientes, empleados
+except ImportError:
+    # Fallback para importación absoluta cuando se ejecuta directamente
+    import sys
+    import os
+    sys.path.append(os.path.dirname(__file__))
+    from routers import login, auth, clientes, empleados
+
+# Crear la instancia de FastAPI
+app = FastAPI(
+    title="CineMaster API",
+    description="API para gestión de cine",
+    version="1.0.0"
+)
+
+# Incluir routers
+app.include_router(login.router)
+app.include_router(auth.router)
+app.include_router(dashboard.router)
+app.include_router(cartelera.router)
+app.include_router(reservas.router)
+
+# Routers para admin/trabajador con funcionalidad de clonado
+app.include_router(clientes.router, prefix="/api", tags=["clientes"])
+app.include_router(empleados.router, prefix="/api", tags=["empleados"])
+
+# Routers de trabajador API (legacy)
+app.include_router(clientes_router)
+app.include_router(peliculas_router)
+app.include_router(reservas_router)
+app.include_router(funciones_router)
+
+# ---- MODIFICACIÓN AQUÍ ----
+app.include_router(api_profile_router.router) # [NUEVO] Se registra el router para que las rutas /profile/... funcionen
+app.include_router(api_admin_router.router)   # [ADMIN] Se registra el router para que las rutas /admin/... funcionen
+
+@app.get("/")
+async def root():
+    return {"message": "CineMaster API v1.0.0 está funcionando!"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "OK", "message": "API funcionando correctamente"}
+
+def start_api():
+    """Función para iniciar la API en un hilo separado"""
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+
+def start_api_in_thread():
+    """Inicia la API en un hilo separado para no bloquear la aplicación principal"""
+    api_thread = threading.Thread(target=start_api, daemon=True)
+    api_thread.start()
+    return api_thread
+
+# --- El navegador ya NO se abrirá automáticamente ---
+# (Dejo la función por si la quieres en desarrollo, pero no se llama abajo)
+def open_browser_delayed():
+    import webbrowser
+    time.sleep(2)
+    webbrowser.open("http://127.0.0.1:8000/login/")
+
+def start_api_with_browser():
+    api_thread = start_api_in_thread()
+    browser_thread = threading.Thread(target=open_browser_delayed, daemon=True)
+    browser_thread.start()
+    return api_thread
+
+if __name__ == "__main__":
+    print("🚀 Iniciando CineMaster API...")
+    start_api()  # <-- Solo inicia la API en modo backend puro
+
+    # Mantener el programa principal ejecutándose (aunque uvicorn ya bloquea)
+    # Puedes comentar el loop si ves que no es necesario.
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n👋 Cerrando CineMaster API...")

@@ -4,8 +4,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from src.services.receipt_system import generate_receipt_text
-from src.config import EMAIL_SENDER, EMAIL_PASSWORD
+from services.receipt_system import generate_receipt_text
+from config import EMAIL_SENDER, EMAIL_PASSWORD
 
 class EmailSenderObserver:
     def __init__(self):

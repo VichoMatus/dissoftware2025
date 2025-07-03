@@ -1,11 +1,15 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+import os
 
 # Base declarativa de SQLAlchemy
 Base = declarative_base()
 
 # Configuración de la conexión con la base de datos
-DATABASE_URL = "sqlite:///./test.db"  # Usa SQLite para pruebas
+# Obtener la ruta absoluta del directorio raíz del proyecto
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+DATABASE_PATH = os.path.join(PROJECT_ROOT, "test.db")
+DATABASE_URL = f"sqlite:///{DATABASE_PATH}"  # Usa SQLite para pruebas
 # DATABASE_URL = "mysql+mysqlconnector://user:password@localhost:3306/database_name"  # Usa MySQL en producción
 
 # Crear la conexión a la base de datos
@@ -48,23 +52,15 @@ class Cliente(Base):
     __tablename__ = "Cliente"
     cliente_id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
-    Email = Column(String, unique=True, nullable=False)  # Asegúrate de que el campo se llama 'Email'
-    Membership = Column(Boolean, default=False)  # Estado de la membresía
-    Reservation_history = Column(String, default="")  # Historial de reservas
+    Email = Column(String, unique=True, nullable=False)
+    Membership = Column(Boolean, default=False)
+    Reservation_history = Column(String, default="")
     Password = Column(String, nullable=False)
 
-    # Agrega esta línea para establecer la relación con Reserva:
     reservas = relationship("Reserva", back_populates="client")
 
-    def obtener_reservas_actuales(self):
-        from datetime import datetime
-        ahora = datetime.now()
-        return [r for r in self.reservas if r.funcion and r.funcion.Schedule >= ahora]
-
-    def obtener_historial_reservas(self):
-        from datetime import datetime
-        ahora = datetime.now()
-        return [r for r in self.reservas if r.funcion and r.funcion.Schedule < ahora]
+    def __repr__(self):
+        return f"<Cliente(cliente_id={self.cliente_id}, Name={self.nombre}, Email={self.Email}, Membership={self.Membership})>"
 
 
 class Pelicula(Base):

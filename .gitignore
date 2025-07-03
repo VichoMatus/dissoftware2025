@@ -1,0 +1,116 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Generated PDFs (boletas)
+Boletas/*.pdf
+
+# Config files with sensitive data
+config.ini
+.env.local
+.env.production
+
+# FastAPI specific
+.pytest_cache/
+
+#pycache
+cinemaster/src/views/reservations/__pycache__
+cinemaster/src/views/__pycache__
+cinemaster/src/views/reservations/__pycache__
+cinemaster/src/views/Cartelera_Solid/__pycache__
+cinemaster/src/views/authentication/__pycache__
+cinemaster/src/views/__pycache__
+cinemaster/src/utils/__pycache__
+cinemaster/src/services/__pycache__
+cinemaster/src/models/__pycache__
+cinemaster/src/database/__pycache__
+cinemaster/src/controllers/__pycache__
+cinemaster/src/commands/__pycache__
+cinemaster/src/builders/__pycache__
+cinemaster/src/api/__pycache__
+cinemaster/src/__pycache__
+*.pyc
