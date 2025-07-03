@@ -108,7 +108,7 @@ class AppController:
         except Exception as e:
             print(f"No se pudo establecer trabajador en dashboard: {e}")
 
-        app = TrabajadorView(empleado.Name)
+        app = TrabajadorView(empleado.Name, empleado.employee_id)
         app.mainloop()
 
 
