@@ -1,3 +1,5 @@
+
+
 class PeliculaAdapter:
     """Adapta datos de API a formato compatible con CartelClasico"""
     
@@ -7,7 +9,11 @@ class PeliculaAdapter:
         self.Title = api_data.get('titulo')  # La API devuelve 'titulo'
         self.Duration = api_data.get('duracion')  # La API devuelve 'duracion'
         self.Gender = api_data.get('genero')  # La API devuelve 'genero'
-        self.Image_path = api_data.get('Image_path')
+        self.Image_path = api_data.get('image_path')
+        
+        # Debug simple para ver qué llega de la API
+        print(f"🔍 API data para '{self.Title}': Image_path = {self.Image_path}")
+        print(f"🔍 Todos los campos de API: {list(api_data.keys())}")
         
         # Obtener horarios inmediatamente si se proporciona cartelera_view
         if cartelera_view and self.id_pelicula:
@@ -16,9 +22,6 @@ class PeliculaAdapter:
             self.horarios = [HorarioAPI(horario_id, fecha) for horario_id, fecha in horarios_api]
         else:
             self.horarios = []  # CartelClasico espera esto, se carga después en reservation_view
-        
-        # Debug para ver qué datos llegan
-        print(f"🔍 PeliculaAdapter creado: ID={self.id_pelicula}, Título={self.Title}, Horarios={len(self.horarios)}")
     
     @classmethod
     def from_api_list(cls, api_data_list, cartelera_view=None):

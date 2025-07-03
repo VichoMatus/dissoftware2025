@@ -30,6 +30,7 @@ def listar_cartelera(db: Session = Depends(get_db)):
             titulo=row.Title,
             genero=row.Gender,
             duracion=row.Duration,
+            image_path=row.Image_path
         ))
     
     return peliculas
