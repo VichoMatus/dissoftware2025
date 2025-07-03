@@ -20,10 +20,11 @@ from views.Tabs.funcion_tab import FuncionesTab
 
 
 class TrabajadorView(ctk.CTk):
-    def __init__(self, employee_name):
+    def __init__(self, employee_name, employee_id=None):
         super().__init__()
         self.title("Panel de Trabajador")
         self.geometry("1100x700")
+        self.employee_id = employee_id  # Almacenar el ID del empleado
 
         self.header = HeaderBar(self, employee_name)
         self.header.pack(fill="x")
@@ -169,7 +170,7 @@ class TrabajadorView(ctk.CTk):
         self.btn_eliminar_reserva.pack(side="left", padx=5, pady=5)
 #--------------------------------------------------------------------------------------------------------#
         self.tabview.add("Funciones")
-        self.funcion_tab = FuncionesTab(self.tabview.tab("Funciones"), self.funcion_service)
+        self.funcion_tab = FuncionesTab(self.tabview.tab("Funciones"), self.funcion_service, self.employee_id)
         self.funcion_tab.pack(fill="both", expand=True)
                 # Botones CRUD para funciones
         self.funcion_btn_frame = ctk.CTkFrame(self.tabview.tab("Funciones"))

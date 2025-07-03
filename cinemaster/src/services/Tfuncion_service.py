@@ -47,6 +47,12 @@ class FuncionAPIService:
         response.raise_for_status()
         return response.json()
 
+    def obtener_peliculas_disponibles(self):
+        """Obtiene lista de películas disponibles para dropdowns"""
+        response = requests.get(f"{self.API_URL}peliculas-disponibles")
+        response.raise_for_status()
+        return response.json()
+
     def crear_funcion(self, id_pelicula, employee_id, Schedule):
         data = {
             "id_pelicula": id_pelicula,
