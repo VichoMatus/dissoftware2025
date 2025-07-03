@@ -1,0 +1,521 @@
+@startuml CineMaster_Clean_Architecture
+!theme plain
+title Diagrama de Clases - Sistema CineMaster\n(Arquitectura Real con Patrones de Diseño)
+
+' === CONFIGURACIÓN DE COLORES ===
+skinparam class {
+  BackgroundColor<<Presentation>> #E1D5E7
+  BorderColor<<Presentation>> #9673A6
+  BackgroundColor<<API>> #DAE8FC
+  BorderColor<<API>> #6C8EBF
+  BackgroundColor<<Data>> #D5E8D4
+  BorderColor<<Data>> #82B366
+  BackgroundColor<<Controller>> #FFF2CC
+  BorderColor<<Controller>> #D6B656
+  BackgroundColor<<Service>> #F8CECC
+  BorderColor<<Service>> #B85450
+  BackgroundColor<<Pattern>> #FFE6CC
+  BorderColor<<Pattern>> #D79B00
+  BackgroundColor<<Builder>> #E1D5E7
+  BorderColor<<Builder>> #9673A6
+}
+
+' === CAPA DE PRESENTACIÓN ===
+package "Capa de Presentación (MVC - Views)" as presentation {
+  
+  class AppController <<Controller>> {
+    - _auth_service: AuthServiceInterface
+    - _registration_service: RegistrationServiceInterface
+    - _dashboard_logger: DashboardLogger
+    --
+    + start(): void
+    + open_login_view(): void
+    + open_cartelera_view(): void
+  }
+  
+  class LoginView <<Presentation>> {
+    - auth_service: AuthServiceInterface
+    --
+    + handle_login(): void
+  }
+  
+  class RegisterView <<Presentation>> {
+    - registration_service: RegistrationServiceInterface
+    --
+    + handle_register(): void
+  }
+  
+  class MainView <<Presentation>> {
+    - cartelera_service
+    --
+    + display_movies(): void
+  }
+  
+  class TrabajadorView <<Presentation>> {
+    - cliente_service: ClienteAPIService
+    --
+    + clone_client(): void
+  }
+  
+  class AdminView <<Presentation>> {
+    - empleado_service: EmpleadoAPIService
+    --
+    + clone_employee(): void
+  }
+  
+  class ReservationView <<Presentation>> {
+    --
+    + create_widgets(): void
+  }
+  
+  class SeatSelectionView <<Presentation>> {
+    - booking_facade: BookingFacade
+    --
+    + handle_seat_selection(): void
+  }
+  
+  class PagoView <<Presentation>> {
+    --
+    + handle_payment(): void
+  }
+  
+  interface AuthServiceInterface <<Service>> {
+    + authenticate(email, password): Dict
+  }
+  
+  interface RegistrationServiceInterface <<Service>> {
+    + register(user_data): Dict
+  }
+}
+
+' === CAPA API ===
+package "Capa API (MVC - Controllers)" as api {
+  
+  class FastAPIMain <<Controller>> {
+    - app: FastAPI
+    --
+    + include_router(): void
+    + root(): Dict
+    + health_check(): Dict
+    + start_api(): void
+  }
+  
+  ' === ROUTERS ===
+  class CarteleraRouter <<API>> {
+    - prefix: "/cartelera"
+    --
+    + listar_cartelera(): List[PeliculaResponse]
+    + obtener_horarios_pelicula(id): List[HorarioResponse]
+    + obtener_asientos_disponibles(id): List[AsientoResponse]
+  }
+  
+  class ReservasRouter <<API>> {
+    - prefix: "/reservas"
+    --
+    + realizar_reserva(): Dict
+    + obtener_reservas(): List[Dict]
+  }
+  
+  class LoginRouter <<API>> {
+    --
+    + login(): Response
+    + logout(): Response
+  }
+  
+  class AuthRouter <<API>> {
+    --
+    + authenticate(): Response
+  }
+  
+  class ClientesRouter <<API>> {
+    - prefix: "/api/clientes"
+    --
+    + get_clients(): List[Dict]
+    + create_client(): Dict
+    + clone_client(id): Dict
+  }
+  
+  class EmpleadosRouter <<API>> {
+    - prefix: "/api/empleados"
+    --
+    + get_employees(): List[Dict]
+    + create_employee(): Dict
+    + clone_employee(id): Dict
+  }
+  
+  ' === SERVICIOS ===
+  class ApiAuthService <<Service>> {
+    - _http_client: HttpClientInterface
+    --
+    + authenticate(email, password): Dict
+    + _validate_credentials(): bool
+  }
+  
+  class ApiRegistrationService <<Service>> {
+    - http_client: HttpClientInterface
+    - api_base_url: str
+    --
+    + register_cliente(name, email, password): Dict
+  }
+  
+  class CarteleraService <<Service>> {
+    --
+    + listar_peliculas(db): List[Dict]
+    + obtener_horarios(db, id): List[Dict]
+    + obtener_asientos_disponibles(db, id): List[Dict]
+  }
+  
+  class BoletaService <<Service>> {
+    - boletas_dir: str
+    - logo_path: str
+    --
+    + generar_boleta_para_reserva(): Dict
+    + _crear_boleta_pdf(): bool
+  }
+  
+  class ClienteAPIService <<Service>> {
+    - base_url: str
+    --
+    + crear_cliente(): Optional[Dict]
+    + obtener_clientes(): List[Dict]
+    + clonar_cliente(id): Optional[Dict]
+  }
+  
+  class EmpleadoAPIService <<Service>> {
+    - base_url: str
+    --
+    + crear_empleado(): Optional[Dict]
+    + obtener_empleados(): List[Dict]
+    + clonar_empleado(id): Optional[Dict]
+  }
+  
+  class DashboardLogger <<Service>> {
+    - _http_client: HttpClientInterface
+    --
+    + log_action(): bool
+    + log_movie_selection(): bool
+    + log_seat_reservation(): bool
+  }
+  
+  ' === PATRONES BUILDER ===
+  class Document <<Builder>> {
+    - document_type: str
+    - title: str
+    - content: Dict
+    --
+    + to_dict(): Dict
+  }
+  
+  abstract class DocumentBuilder <<Builder>> {
+    + _document: Document
+    --
+    + reset(): void
+    + set_title(title): DocumentBuilder
+    + add_content(key, value): DocumentBuilder
+    + document(): Document
+  }
+  
+  class ConcreteDocumentBuilder <<Builder>> {
+    --
+    + set_title(title): ConcreteDocumentBuilder
+    + add_content(key, value): ConcreteDocumentBuilder
+  }
+  
+  class DocumentDirector <<Builder>> {
+    - _builder: DocumentBuilder
+    --
+    + build_ticket(): Document
+    + build_invoice(): Document
+  }
+  
+  ' === PATRONES COMMAND ===
+  abstract class Command <<Pattern>> {
+    + execute(): Dict
+  }
+  
+  class ReserveSeatCommand <<Pattern>> {
+    - client_id: int
+    - seat_id: str
+    - horario_id: int
+    --
+    + execute(): Dict
+  }
+  
+  class GenerateReceiptCommand <<Pattern>> {
+    - movie_name: str
+    - client_name: str
+    --
+    + execute(): Dict
+  }
+  
+  class NotificationCommand <<Pattern>> {
+    - reservation_subject: ReservationSubject
+    - event_data: Dict
+    --
+    + execute(): Dict
+  }
+  
+  class CommandInvoker <<Pattern>> {
+    - _commands: List[Command]
+    --
+    + add_command(command): void
+    + execute_commands(): List[Dict]
+  }
+  
+  ' === PATRONES OBSERVER ===
+  abstract class Observer <<Pattern>> {
+    + update(event_data): void
+  }
+  
+  class EmailObserver <<Pattern>> {
+    --
+    + update(event_data): void
+    + _send_reservation_email(): bool
+  }
+  
+  class ReservationSubject <<Pattern>> {
+    - _observers: List[Observer]
+    --
+    + attach(observer): void
+    + notify(event_data): void
+  }
+  
+  ' === FACADE ===
+  class BookingFacade <<Pattern>> {
+    - invoker: CommandInvoker
+    - reservation_subject: ReservationSubject
+    --
+    + book_complete_reservation(data, db): Dict
+    + _check_seat_availability(data, db): bool
+  }
+  
+  ' === SCHEMAS (DTO) ===
+  note as DTOSchemas
+    **Pydantic Schemas (DTO Pattern)**
+    
+    **Cartelera:**
+    - PeliculaResponse
+    - HorarioResponse
+    - AsientoResponse
+    
+    **Funciones:**
+    - FuncionCreate, FuncionResponse
+    - PeliculaSimple
+    
+    **Clientes y Empleados:**
+    - ClienteCreate, ClienteSchema
+    - EmpleadoCreate, EmpleadoSchema
+    
+    **Reservas:**
+    - ReservaCreate, ReservaSchema
+  end note
+}
+
+' === CAPA DE DATOS ===
+package "Capa de Datos (MVC - Models)" as data {
+  
+  ' === SINGLETON DATABASE ===
+  class DatabaseConnection <<Data>> {
+    - _instance: DatabaseConnection
+    - _lock: threading.Lock
+    - DATABASE_URL: str
+    --
+    + __new__(): DatabaseConnection
+    + get_session(): Session
+    <<Singleton>>
+  }
+  
+  class APIDatabase <<Data>> {
+    - DATABASE_URL: str
+    - engine: Engine
+    --
+    + get_db(): Generator[Session]
+  }
+  
+  ' === MODELOS ===
+  class Cliente <<Data>> {
+    - cliente_id: int <<PK>>
+    - nombre: str
+    - Email: str <<unique>>
+    - Password: str
+    --
+    + clone(): Cliente
+  }
+  
+  class Pelicula <<Data>> {
+    - id_pelicula: int <<PK>>
+    - Title: str
+    - Duration: int
+    - Gender: str
+    - Image_path: str
+  }
+  
+  class Empleado <<Data>> {
+    - employee_id: int <<PK>>
+    - Name: str
+    - Email: str
+    - Password: str
+    --
+    + clone(): Empleado
+  }
+  
+  class Horario <<Data>> {
+    - id: int <<PK>>
+    - fecha: DateTime
+    - pelicula_id: int <<FK>>
+  }
+  
+  class Asiento <<Data>> {
+    - ids_seats: str <<PK>>
+    - id_Hall: int <<FK>>
+  }
+  
+  class Funcion <<Data>> {
+    - id_funcion: int <<PK>>
+    - id_pelicula: int <<FK>>
+    - employee_id: int <<FK>>
+    - Schedule: DateTime
+  }
+  
+  class HorarioAsientos <<Data>> {
+    - horario_id: int <<PK,FK>>
+    - asiento_id: str <<PK,FK>>
+    - Available: bool
+  }
+  
+  class Reserva <<Data>> {
+    - reservation_id: int <<PK>>
+    - client_id: int <<FK>>
+    - id_funcion: int <<FK>>
+    - employee_id: int <<FK>>
+  }
+  
+  class Sala <<Data>> {
+    - id_Hall: int <<PK>>
+    - Capacity: int
+    - Type: str
+  }
+}
+
+' === RELACIONES PRINCIPALES ===
+
+' Presentación -> API
+AppController --> FastAPIMain : "HTTP"
+LoginView --> LoginRouter : "HTTP"
+RegisterView --> AuthRouter : "HTTP"
+MainView --> CarteleraRouter : "HTTP"
+TrabajadorView --> ClienteAPIService : "uses"
+AdminView --> EmpleadoAPIService : "uses"
+SeatSelectionView --> BookingFacade : "uses"
+PagoView --> BoletaService : "uses"
+
+' FastAPI -> Routers
+FastAPIMain --> CarteleraRouter : "includes"
+FastAPIMain --> ReservasRouter : "includes"
+FastAPIMain --> LoginRouter : "includes"
+FastAPIMain --> AuthRouter : "includes"
+FastAPIMain --> ClientesRouter : "includes"
+FastAPIMain --> EmpleadosRouter : "includes"
+
+' Routers -> Services
+CarteleraRouter --> CarteleraService : "uses"
+ReservasRouter --> BookingFacade : "uses"
+ClientesRouter --> ClienteAPIService : "uses"
+EmpleadosRouter --> EmpleadoAPIService : "uses"
+AuthRouter --> ApiAuthService : "uses"
+LoginRouter --> ApiAuthService : "uses"
+
+' Services -> Database
+CarteleraService --> APIDatabase : "uses"
+ClienteAPIService --> APIDatabase : "uses"
+EmpleadoAPIService --> APIDatabase : "uses"
+BoletaService --> APIDatabase : "uses"
+ApiAuthService --> APIDatabase : "uses"
+ApiRegistrationService --> APIDatabase : "uses"
+
+' Builder Pattern
+ConcreteDocumentBuilder --|> DocumentBuilder : "implements"
+DocumentBuilder --> Document : "builds"
+DocumentDirector --> DocumentBuilder : "uses"
+BoletaService --> DocumentDirector : "uses"
+
+' Command Pattern
+ReserveSeatCommand ..|> Command : "implements"
+GenerateReceiptCommand ..|> Command : "implements"
+NotificationCommand ..|> Command : "implements"
+CommandInvoker --> Command : "executes"
+BookingFacade --> CommandInvoker : "uses"
+
+' Observer Pattern
+EmailObserver ..|> Observer : "implements"
+ReservationSubject --> Observer : "notifies"
+BookingFacade --> ReservationSubject : "uses"
+
+' Facade Pattern
+BookingFacade --> EmailObserver : "uses"
+
+' Prototype Pattern
+ClienteAPIService --> Cliente : "clones"
+EmpleadoAPIService --> Empleado : "clones"
+
+' Database Access
+APIDatabase --> DatabaseConnection : "uses"
+CarteleraService --> Cliente : "queries"
+CarteleraService --> Pelicula : "queries"
+CarteleraService --> Horario : "queries"
+CarteleraService --> Asiento : "queries"
+CarteleraService --> HorarioAsientos : "queries"
+
+' Relaciones de Base de Datos
+Cliente ||--o{ Reserva : "1:M"
+Empleado ||--o{ Reserva : "1:M"
+Pelicula ||--o{ Funcion : "1:M"
+Empleado ||--o{ Funcion : "1:M"
+Pelicula ||--o{ Horario : "1:M"
+Horario ||--o{ HorarioAsientos : "1:M"
+Asiento ||--o{ HorarioAsientos : "1:M"
+Sala ||--o{ Asiento : "1:M"
+
+' Interfaces
+ApiAuthService ..|> AuthServiceInterface : "implements"
+ApiRegistrationService ..|> RegistrationServiceInterface : "implements"
+
+' === NOTAS ===
+note top of presentation
+  **CAPA DE PRESENTACIÓN (MVC - Views)**
+  - Interfaces para servicios
+  - Dependency Injection
+  - Patrón Strategy implícito
+end note
+
+note top of api
+  **CAPA API (MVC - Controllers)**
+  - FastAPI como framework
+  - Múltiples routers organizados
+  - Patrones: Builder, Command, Observer, Facade
+  - Prototype para clonación
+  - DTO con Pydantic Schemas
+end note
+
+note top of data
+  **CAPA DE DATOS (MVC - Models)**
+  - Singleton para conexión DB
+  - SQLAlchemy ORM
+  - Modelos con relaciones
+end note
+
+legend bottom left
+  **PATRONES IMPLEMENTADOS:**
+  
+  **🔐 Singleton:** DatabaseConnection
+  **🏗️ Builder:** Document + DocumentBuilder
+  **🔄 Prototype:** Cliente/Empleado cloning
+  **🏢 Facade:** BookingFacade
+  **📦 DTO:** Pydantic Schemas
+  **⚡ Command:** ReserveSeatCommand, etc.
+  **👁️ Observer:** EmailObserver
+  **🎯 Strategy:** Service interfaces
+  **🏛️ MVC:** Arquitectura general
+endlegend
+
+@enduml
