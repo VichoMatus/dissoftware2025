@@ -1,0 +1,26 @@
+{
+  "document_type": "cinema_ticket",
+  "document_id": "eb04644b-7305-4f9d-8f71-f408807f59f3",
+  "timestamp": "2025-07-02T20:28:15.532262",
+  "title": "🎬 CINEMASTER - Boleto de Entrada",
+  "subtitle": "Película: Bajoterra",
+  "content": {
+    "movie_name": "Bajoterra",
+    "showtime": "2025-05-30 23:00",
+    "seat": "E6",
+    "client_name": "Nicolas",
+    "ticket_price": 12.0
+  },
+  "metadata": {
+    "generated_by": "CineMaster API",
+    "document_version": "1.0",
+    "image_path": null
+  },
+  "styling": {
+    "theme": "cinema",
+    "color_scheme": "dark_blue"
+  },
+  "header": "🎭 CINEMASTER CINEMA",
+  "footer": "¡Gracias por elegirnos! - www.cinemaster.com",
+  "attachments": []
+}

@@ -10,8 +10,8 @@ from api.routers import cartelera
 from api.routers import reservas
 from .routers import dashboard
 from api.routers import dashboard
-
-
+from .routers import api_profile_router
+from .routers import api_admin_router
 # Importar routers
 try:
     from .routers import login, auth, clientes, empleados
