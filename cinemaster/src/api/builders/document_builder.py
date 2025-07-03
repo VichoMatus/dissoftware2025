@@ -176,7 +176,7 @@ class DocumentDirector:
         """
         Construye un boleto de cine usando el patrón Builder
         """
-        return (self._builder
+        builder_instance = (self._builder
                 .set_document_type("cinema_ticket")
                 .set_title("🎬 CINEMASTER - Boleto de Entrada")
                 .set_subtitle(f"Película: {movie_name}")
@@ -186,8 +186,14 @@ class DocumentDirector:
                 .add_content("client_name", client_name)
                 .add_content("ticket_price", ticket_price)
                 .set_metadata("generated_by", "CineMaster API")
-                .set_metadata("document_version", "1.0")
-                .set_metadata("image_path", image_path)
+                .set_metadata("document_version", "1.0"))
+        
+        # Agregar imagen tanto al content como a metadata
+        if image_path:
+            builder_instance.add_content("movie_image_path", image_path)
+            builder_instance.set_metadata("image_path", image_path)
+        
+        return (builder_instance
                 .set_styling("theme", "cinema")
                 .set_styling("color_scheme", "dark_blue")
                 .set_header("🎭 CINEMASTER CINEMA")

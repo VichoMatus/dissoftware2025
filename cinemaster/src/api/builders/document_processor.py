@@ -7,11 +7,12 @@ from typing import Dict, Any, Optional
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 import json
 from datetime import datetime
+import base64
 
 from .document_builder import Document
 
@@ -118,6 +119,23 @@ class DocumentProcessor:
         """Construye el contenido específico para boletos de cine"""
         story = []
         content = document.content
+        
+        # Agregar imagen de la película si está disponible
+        movie_image_path = content.get("movie_image_path")
+        if movie_image_path and os.path.exists(movie_image_path):
+            try:
+                # Agregar imagen de la película
+                img = Image(movie_image_path)
+                img.drawHeight = 2*inch
+                img.drawWidth = 1.5*inch
+                
+                # Centrar la imagen
+                img.hAlign = 'CENTER'
+                
+                story.append(img)
+                story.append(Spacer(1, 12))
+            except Exception as e:
+                print(f"Error al cargar imagen de película: {e}")
         
         # Información del boleto en tabla
         ticket_data = [
@@ -322,7 +340,33 @@ class DocumentProcessor:
     
     def _generate_ticket_html(self, content: Dict[str, Any]) -> str:
         """Genera HTML específico para boletos"""
+        # Preparar imagen de la película
+        movie_image_html = ""
+        movie_image_path = content.get("movie_image_path")
+        
+        if movie_image_path and os.path.exists(movie_image_path):
+            try:
+                # Convertir imagen a base64 para incluirla en HTML
+                with open(movie_image_path, "rb") as img_file:
+                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                    img_ext = os.path.splitext(movie_image_path)[1].lower()[1:]  # Obtener extensión sin el punto
+                    
+                    # Determinar el tipo MIME
+                    mime_type = "image/jpeg" if img_ext in ["jpg", "jpeg"] else f"image/{img_ext}"
+                    
+                    movie_image_html = f"""
+                    <div style="text-align: center; margin: 20px 0;">
+                        <img src="data:{mime_type};base64,{img_data}" 
+                             alt="Imagen de la película" 
+                             style="max-width: 200px; max-height: 300px; border: 2px solid #ddd; border-radius: 8px;">
+                    </div>
+                    """
+            except Exception as e:
+                print(f"Error al procesar imagen para HTML: {e}")
+                movie_image_html = ""
+        
         return f"""
+        {movie_image_html}
         <table>
             <tr><th>🎬 Película</th><td>{content.get('movie_name', 'N/A')}</td></tr>
             <tr><th>🕐 Horario</th><td>{content.get('showtime', 'N/A')}</td></tr>
